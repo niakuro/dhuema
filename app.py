@@ -158,7 +158,48 @@ class DuelMastersGame:
         self.winner = None
         self.log = ["デュエルマスターズ開始！"]
         self.attacking_creature = None
-        self.attac属性（文明）情報を保持
+    
+    def build_deck(self, player):
+        """デッキを構築（テスト用）"""
+        deck = []
+        # 全カードから2枚ずつ
+        for card in CARD_DB:
+            deck.append(dict(card))
+            if card["cost"] <= 4:  # コスト4以下は2枚
+                deck.append(dict(card))
+        random.shuffle(deck)
+        self.players[player]["deck"] = deck[:40]  # 40枚に調整
+    
+    def draw_card(self, player, count=1):
+        """カードを引く"""
+        for _ in range(count):
+            if len(self.players[player]["deck"]) > 0:
+                card = self.players[player]["deck"].pop(0)
+                self.players[player]["hand"].append(card)
+                self.log.append(f"{player}がカードを1枚引いた")
+            else:
+                self.winner = "p2" if player == "p1" else "p1"
+                self.log.append(f"{player}のデッキ切れ！")
+    
+    def setup_shields(self, player):
+        """シールドを5枚セット"""
+        self.players[player]["shield_cards"] = []
+        for _ in range(5):
+            if len(self.players[player]["deck"]) > 0:
+                shield_card = self.players[player]["deck"].pop(0)
+                self.players[player]["shield_cards"].append(shield_card)
+    
+    def charge_mana(self, player, card_id):
+        """手札からマナゾーンにカードをチャージ"""
+        hand = self.players[player]["hand"]
+    def charge_mana(self, player, card_id):
+        """手札からマナゾーンにカードをチャージ"""
+        hand = self.players[player]["hand"]
+        for i, card in enumerate(hand):
+            if card["id"] == card_id:
+                mana_card = hand.pop(i)
+                mana_card["tapped"] = False
+                # 属性（文明）情報を保持
                 # 多色カードは複数の属性を持つが、表示用に最初の属性を使用
                 if isinstance(mana_card.get("civ"), list):
                     mana_card["civ_display"] = mana_card["civ"][0]
@@ -189,35 +230,16 @@ class DuelMastersGame:
         for card in self.players[player]["mana"]:
             if self.has_civilization(card, civ_name):
                 count += 1
-        return count"cost"] <= 4:  # コスト4以下は2枚
-                deck.append(dict(card))
-        random.shuffle(deck)
-        self.players[player]["deck"] = deck[:40]  # 40枚に調整
+        return count
     
-    def draw_card(self, player, count=1):
-        """カードを引く"""
-        for _ in range(count):
-            if len(self.players[player]["deck"]) > 0:
-                card = self.players[player]["deck"].pop(0)
-                self.players[player]["hand"].append(card)
-                self.log.append(f"{player}がカードを1枚引いた")
-            else:
-                self.winner = "p2" if player == "p1" else "p1"
-                self.log.append(f"{player}のデッキ切れ！")
-    
-    def setup_shields(self, player):
-        """シールドを5枚セット"""
-        self.players[player]["shield_cards"] = []
-        for _ in range(5):
-            if len(self.players[player]["deck"]) > 0:
-                shield_card = self.players[player]["deck"].pop(0)
-                self.players[player]["shield_cards"].append(shield_card)
-    
-    def charge_mana(self, player, card_id):
-        """手札からマナゾーンにカードをチャージ"""
+    def summon_creature(self, player, card_id):
+        """クリーチャーを召喚"""
         hand = self.players[player]["hand"]
         for i, card in enumerate(hand):
-            if car文明を対象としたコスト軽減効果のチェック（将来の拡張用）
+            if card["id"] == card_id:
+                # コストチェック
+                available_mana = [m for m in self.players[player]["mana"] if not m.get("tapped", False)]
+                # 文明を対象としたコスト軽減効果のチェック（将来の拡張用）
                 actual_cost = card["cost"]
                 # 例: "水の呪文のコスト-1" のような効果があればここで処理
                 
@@ -234,14 +256,14 @@ class DuelMastersGame:
                 creature["tapped"] = False
                 # 属性情報を保持
                 if "civ" in creature and isinstance(creature["civ"], list):
-                    creature["civilizations"] = creature["civ"]"] = mana_card.get("civ", "fire")
-                self.players[player]["mana"].append(mana_card)
-                self.log.append(f"{player}が{mana_card['name']}をマナゾーンに置いた")
-                return True
-        return False
-    
-    def summon_creature(self, player, card_id):
-        """クリーチャーを召喚"""
+                    creature["civilizations"] = creature["civ"]
+                self.players[player]["battle_zone"].append(creature)
+                self.log.append(f"{player}が{creature['name']}を召喚した")
+                
+                # 能力処理
+                self.trigger_ability(player, creature)
+                return True, "召喚成功"
+        return False, "カードが見つかりません"
         hand = self.players[player]["hand"]
         for i, card in enumerate(hand):
             if card["id"] == card_id:
@@ -581,8 +603,22 @@ def handle_ready(data):
         player = data['player']
         game.players[player]['ready'] = True
         
-        # デッキ構築
-        game.build_deck(player)
+        # デッキを受け取る
+        if 'deck' in data and data['deck']:
+            player_deck = []
+            for card_id in data['deck']:
+                card = next((c for c in CARD_DB if c['id'] == card_id), None)
+                if card:
+                    player_deck.append(dict(card))
+            
+            if len(player_deck) == 40:
+                game.players[player]['deck'] = player_deck
+                random.shuffle(game.players[player]['deck'])
+            else:
+                game.build_deck(player)  # フォールバック
+        else:
+            # デッキ構築
+            game.build_deck(player)
         
         emit('player_ready', {'player': player}, room=room_id)
         

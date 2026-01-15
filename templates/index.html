@@ -687,13 +687,41 @@
         <!-- CPU対戦画面 -->
         <div class="room-setup" id="cpuBattleScreen" style="display: none;">
             <h2>🤖 CPU対戦</h2>
-            <p style="margin: 20px 0;">CPU対戦機能は準備中です...</p>
+            
+            <!-- デッキ選択 -->
+            <div style="margin: 20px 0; padding: 15px; background: rgba(0,0,0,0.5); border-radius: 10px;">
+                <h3 style="color: #ffcc00;">使用デッキを選択</h3>
+                <select id="cpuDeckSelect" style="width: 100%; padding: 10px; margin: 10px 0; background: rgba(255,255,255,0.1); color: white; border: 2px solid #ffcc00; border-radius: 5px;">
+                    <option value="">-- デッキを選択 --</option>
+                    <option value="1">スロット1</option>
+                    <option value="2">スロット2</option>
+                    <option value="3">スロット3</option>
+                    <option value="4">スロット4</option>
+                    <option value="5">スロット5</option>
+                </select>
+            </div>
+            
+            <button onclick="startCPUBattle()" style="width: 100%; padding: 20px; font-size: 18px; margin: 20px 0;">対戦開始</button>
             <button onclick="backToMenu()" style="width: 100%;">メニューに戻る</button>
         </div>
         
         <!-- オンライン対戦画面 -->
         <div class="room-setup" id="onlineBattleScreen" style="display: none;">
             <h2>🌐 オンライン対戦</h2>
+            
+            <!-- デッキ選択 -->
+            <div id="deckSelectionArea" style="margin: 20px 0; padding: 15px; background: rgba(0,0,0,0.5); border-radius: 10px;">
+                <h3 style="color: #ffcc00;">使用デッキを選択</h3>
+                <select id="onlineDeckSelect" style="width: 100%; padding: 10px; margin: 10px 0; background: rgba(255,255,255,0.1); color: white; border: 2px solid #ffcc00; border-radius: 5px;">
+                    <option value="">-- デッキを選択 --</option>
+                    <option value="1">スロット1</option>
+                    <option value="2">スロット2</option>
+                    <option value="3">スロット3</option>
+                    <option value="4">スロット4</option>
+                    <option value="5">スロット5</option>
+                </select>
+            </div>
+            
             <input type="text" id="roomIdInput" placeholder="ルームID（空欄で自動生成）" style="margin: 20px 0;">
             <div>
                 <button onclick="createRoom()" style="width: 48%; margin: 5px 1%;">ルーム作成</button>
@@ -1209,9 +1237,311 @@
         
         // 準備完了
         function ready() {
-            socket.emit('ready', { player: myPlayer });
+            const deckSlot = document.getElementById('onlineDeckSelect').value;
+            if (!deckSlot) {
+                alert('デッキを選択してください');
+                return;
+            }
+            
+            const savedDeck = localStorage.getItem(`deck_slot_${deckSlot}`);
+            if (!savedDeck) {
+                alert('選択されたスロットにデッキが保存されていません');
+                return;
+            }
+            
+            const deck = JSON.parse(savedDeck);
+            if (deck.length !== 40) {
+                alert('デッキが40枚ではありません');
+                return;
+            }
+            
+            socket.emit('ready', { player: myPlayer, deck: deck });
             document.getElementById('readyBtn').disabled = true;
             document.getElementById('roomInfo').innerHTML += '<br>準備完了！相手を待っています...';
+        }
+        
+        // CPU対戦開始
+        let isCPUGame = false;
+        let cpuThinking = false;
+        
+        function startCPUBattle() {
+            const deckSlot = document.getElementById('cpuDeckSelect').value;
+            if (!deckSlot) {
+                alert('デッキを選択してください');
+                return;
+            }
+            
+            const savedDeck = localStorage.getItem(`deck_slot_${deckSlot}`);
+            if (!savedDeck) {
+                alert('選択されたスロットにデッキが保存されていません');
+                return;
+            }
+            
+            const playerDeck = JSON.parse(savedDeck);
+            if (playerDeck.length !== 40) {
+                alert('デッキが40枚ではありません');
+                return;
+            }
+            
+            isCPUGame = true;
+            myPlayer = 'p1';
+            
+            // CPUのデッキを生成（ランダムな構成）
+            const cpuDeck = generateCPUDeck();
+            
+            // ローカルゲーム状態を初期化
+            gameState = initializeLocalGame(playerDeck, cpuDeck);
+            
+            hideAllScreens();
+            document.getElementById('gameField').classList.add('active');
+            updateGameDisplay();
+        }
+        
+        // CPUのデッキを生成
+        function generateCPUDeck() {
+            if (allCards.length === 0) return [];
+            
+            const deck = [];
+            const availableCards = [...allCards];
+            
+            // ランダムにカードを選択（40枚、各カード最大4枚）
+            while (deck.length < 40 && availableCards.length > 0) {
+                const randomIndex = Math.floor(Math.random() * availableCards.length);
+                const card = availableCards[randomIndex];
+                
+                // 同じカードの枚数をカウント
+                const count = deck.filter(id => id === card.id).length;
+                
+                if (count < 4) {
+                    deck.push(card.id);
+                }
+                
+                // コストバランスを考慮
+                const lowCost = deck.filter(id => {
+                    const c = allCards.find(c => c.id === id);
+                    return c && c.cost <= 3;
+                }).length;
+                
+                if (lowCost < deck.length * 0.4 && card.cost <= 3) {
+                    // 低コストを優先
+                } else if (deck.length > 30 && card.cost > 5) {
+                    // 高コストを避ける
+                    continue;
+                }
+            }
+            
+            return deck;
+        }
+        
+        // ローカルゲームを初期化
+        function initializeLocalGame(playerDeck, cpuDeck) {
+            const state = {
+                players: {
+                    p1: {
+                        deck: playerDeck.map(id => allCards.find(c => c.id === id)).filter(c => c),
+                        hand: [],
+                        mana: [],
+                        battle_zone: [],
+                        shields: 5,
+                        shield_cards: [],
+                        graveyard: [],
+                        deck_count: 40,
+                        hand_count: 0
+                    },
+                    p2: {
+                        deck: cpuDeck.map(id => allCards.find(c => c.id === id)).filter(c => c),
+                        hand: [],
+                        mana: [],
+                        battle_zone: [],
+                        shields: 5,
+                        shield_cards: [],
+                        graveyard: [],
+                        deck_count: 40,
+                        hand_count: 0
+                    }
+                },
+                turn: 'p1',
+                turn_count: 1,
+                phase: 'draw',
+                winner: null,
+                log: ['デュエルマスターズ開始！', 'CPU対戦モード']
+            };
+            
+            // デッキをシャッフル
+            state.players.p1.deck = shuffleDeck(state.players.p1.deck);
+            state.players.p2.deck = shuffleDeck(state.players.p2.deck);
+            
+            // シールド設置
+            for (let i = 0; i < 5; i++) {
+                if (state.players.p1.deck.length > 0) {
+                    state.players.p1.shield_cards.push(state.players.p1.deck.shift());
+                }
+                if (state.players.p2.deck.length > 0) {
+                    state.players.p2.shield_cards.push(state.players.p2.deck.shift());
+                }
+            }
+            
+            // 初期ドロー
+            for (let i = 0; i < 5; i++) {
+                if (state.players.p1.deck.length > 0) {
+                    state.players.p1.hand.push(state.players.p1.deck.shift());
+                }
+                if (state.players.p2.deck.length > 0) {
+                    state.players.p2.hand.push(state.players.p2.deck.shift());
+                }
+            }
+            
+            state.players.p1.deck_count = state.players.p1.deck.length;
+            state.players.p2.deck_count = state.players.p2.deck.length;
+            state.players.p1.hand_count = state.players.p1.hand.length;
+            state.players.p2.hand_count = state.players.p2.hand.length;
+            
+            return state;
+        }
+        
+        // デッキをシャッフル
+        function shuffleDeck(deck) {
+            const shuffled = [...deck];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+        
+        // CPUのAI思考
+        function cpuTurn() {
+            if (!isCPUGame || gameState.turn !== 'p2' || cpuThinking) return;
+            
+            cpuThinking = true;
+            
+            setTimeout(() => {
+                // CPUのターン処理（簡易AI）
+                cpuDrawPhase();
+                setTimeout(() => {
+                    cpuManaPhase();
+                    setTimeout(() => {
+                        cpuMainPhase();
+                        setTimeout(() => {
+                            cpuAttackPhase();
+                            setTimeout(() => {
+                                cpuEndTurn();
+                                cpuThinking = false;
+                            }, 1000);
+                        }, 1500);
+                    }, 1000);
+                }, 1000);
+            }, 1500);
+        }
+        
+        function cpuDrawPhase() {
+            // ドロー
+            if (gameState.players.p2.deck.length > 0) {
+                const card = gameState.players.p2.deck.shift();
+                gameState.players.p2.hand.push(card);
+                gameState.players.p2.deck_count--;
+                gameState.players.p2.hand_count++;
+                gameState.log.push('CPUがカードを1枚引いた');
+                updateGameDisplay();
+            }
+        }
+        
+        function cpuManaPhase() {
+            // マナチャージ（手札から1枚）
+            if (gameState.players.p2.hand.length > 0) {
+                const card = gameState.players.p2.hand.shift();
+                card.tapped = false;
+                gameState.players.p2.mana.push(card);
+                gameState.players.p2.hand_count--;
+                gameState.log.push(`CPUが${card.name}をマナゾーンに置いた`);
+                updateGameDisplay();
+            }
+        }
+        
+        function cpuMainPhase() {
+            // クリーチャー召喚（コストの範囲内で）
+            const availableMana = gameState.players.p2.mana.filter(m => !m.tapped).length;
+            
+            for (const card of gameState.players.p2.hand) {
+                if (card.type === 'creature' && card.cost <= availableMana) {
+                    // マナをタップ
+                    let tappedCount = 0;
+                    for (const mana of gameState.players.p2.mana) {
+                        if (!mana.tapped && tappedCount < card.cost) {
+                            mana.tapped = true;
+                            tappedCount++;
+                        }
+                    }
+                    
+                    // 召喚
+                    const index = gameState.players.p2.hand.indexOf(card);
+                    gameState.players.p2.hand.splice(index, 1);
+                    card.summoning_sick = true;
+                    card.tapped = false;
+                    gameState.players.p2.battle_zone.push(card);
+                    gameState.players.p2.hand_count--;
+                    gameState.log.push(`CPUが${card.name}を召喚した`);
+                    updateGameDisplay();
+                    break;
+                }
+            }
+        }
+        
+        function cpuAttackPhase() {
+            // 攻撃（召喚酔いしていないクリーチャー）
+            for (const creature of gameState.players.p2.battle_zone) {
+                if (!creature.summoning_sick && !creature.tapped) {
+                    creature.tapped = true;
+                    const breaker = creature.breaker || 1;
+                    
+                    for (let i = 0; i < breaker; i++) {
+                        if (gameState.players.p1.shields > 0) {
+                            gameState.players.p1.shields--;
+                            
+                            if (gameState.players.p1.shield_cards.length > 0) {
+                                const shieldCard = gameState.players.p1.shield_cards.shift();
+                                gameState.players.p1.hand.push(shieldCard);
+                                gameState.players.p1.hand_count++;
+                            }
+                        }
+                    }
+                    
+                    gameState.log.push(`CPUの${creature.name}が攻撃！`);
+                    
+                    if (gameState.players.p1.shields === 0) {
+                        gameState.winner = 'p2';
+                        gameState.log.push('CPUの勝利！');
+                    }
+                    
+                    updateGameDisplay();
+                }
+            }
+        }
+        
+        function cpuEndTurn() {
+            // ターン終了
+            gameState.turn = 'p1';
+            gameState.turn_count++;
+            
+            // アンタップ
+            for (const mana of gameState.players.p1.mana) {
+                mana.tapped = false;
+            }
+            for (const creature of gameState.players.p1.battle_zone) {
+                creature.tapped = false;
+                creature.summoning_sick = false;
+            }
+            
+            // ドロー
+            if (gameState.players.p1.deck.length > 0) {
+                const card = gameState.players.p1.deck.shift();
+                gameState.players.p1.hand.push(card);
+                gameState.players.p1.deck_count--;
+                gameState.players.p1.hand_count++;
+            }
+            
+            gameState.log.push(`ターン${gameState.turn_count}: あなたのターン`);
+            updateGameDisplay();
         }
         
         // マナチャージモード
@@ -1244,29 +1574,194 @@
         
         // ターン終了
         function endTurn() {
-            socket.emit('end_turn', { player: myPlayer });
+            if (isCPUGame) {
+                // ローカルゲームの場合
+                localEndTurn();
+            } else {
+                // オンラインゲームの場合
+                socket.emit('end_turn', { player: myPlayer });
+            }
             currentMode = null;
             selectedCard = null;
+        }
+        
+        // ローカルゲームのターン終了
+        function localEndTurn() {
+            // ターン切り替え
+            gameState.turn = 'p2';
+            gameState.turn_count++;
+            
+            // 自分のクリーチャーをアンタップ
+            for (const creature of gameState.players.p1.battle_zone) {
+                creature.tapped = false;
+                creature.summoning_sick = false;
+            }
+            for (const mana of gameState.players.p1.mana) {
+                mana.tapped = false;
+            }
+            
+            // CPUのクリーチャーをアンタップ
+            for (const creature of gameState.players.p2.battle_zone) {
+                creature.tapped = false;
+                creature.summoning_sick = false;
+            }
+            for (const mana of gameState.players.p2.mana) {
+                mana.tapped = false;
+            }
+            
+            gameState.log.push(`ターン${gameState.turn_count}: CPUのターン`);
+            updateGameDisplay();
+            
+            // CPUのターン開始
+            cpuTurn();
         }
         
         // カードクリック
         function onCardClick(card, location) {
             if (gameState.turn !== myPlayer) return;
             
-            if (currentMode === 'charge' && location === 'hand') {
-                socket.emit('charge_mana', { player: myPlayer, card_id: card.id });
-                currentMode = null;
-            } else if (currentMode === 'summon' && location === 'hand' && card.type === 'creature') {
-                socket.emit('summon_creature', { player: myPlayer, card_id: card.id });
-                currentMode = null;
-            } else if (currentMode === 'spell' && location === 'hand' && card.type === 'spell') {
-                socket.emit('cast_spell', { player: myPlayer, card_id: card.id });
-                currentMode = null;
-            } else if (currentMode === 'attack' && location === 'battle') {
-                socket.emit('attack', { player: myPlayer, creature_id: card.id, target: 'player' });
+            if (isCPUGame) {
+                // ローカルゲーム処理
+                if (currentMode === 'charge' && location === 'hand') {
+                    localChargeMana(card);
+                    currentMode = null;
+                } else if (currentMode === 'summon' && location === 'hand' && card.type === 'creature') {
+                    localSummonCreature(card);
+                    currentMode = null;
+                } else if (currentMode === 'spell' && location === 'hand' && card.type === 'spell') {
+                    localCastSpell(card);
+                    currentMode = null;
+                } else if (currentMode === 'attack' && location === 'battle') {
+                    localAttack(card);
+                }
+            } else {
+                // オンラインゲーム処理
+                if (currentMode === 'charge' && location === 'hand') {
+                    socket.emit('charge_mana', { player: myPlayer, card_id: card.id });
+                    currentMode = null;
+                } else if (currentMode === 'summon' && location === 'hand' && card.type === 'creature') {
+                    socket.emit('summon_creature', { player: myPlayer, card_id: card.id });
+                    currentMode = null;
+                } else if (currentMode === 'spell' && location === 'hand' && card.type === 'spell') {
+                    socket.emit('cast_spell', { player: myPlayer, card_id: card.id });
+                    currentMode = null;
+                } else if (currentMode === 'attack' && location === 'battle') {
+                    socket.emit('attack', { player: myPlayer, creature_id: card.id, target: 'player' });
+                }
             }
             
             updateButtonStates();
+        }
+        
+        // ローカルゲーム: マナチャージ
+        function localChargeMana(card) {
+            const index = gameState.players.p1.hand.findIndex(c => c.id === card.id);
+            if (index > -1) {
+                const manaCard = gameState.players.p1.hand.splice(index, 1)[0];
+                manaCard.tapped = false;
+                gameState.players.p1.mana.push(manaCard);
+                gameState.players.p1.hand_count--;
+                gameState.log.push(`${manaCard.name}をマナゾーンに置いた`);
+                updateGameDisplay();
+            }
+        }
+        
+        // ローカルゲーム: クリーチャー召喚
+        function localSummonCreature(card) {
+            const availableMana = gameState.players.p1.mana.filter(m => !m.tapped);
+            if (availableMana.length < card.cost) {
+                alert('マナが足りません');
+                return;
+            }
+            
+            // マナをタップ
+            let tapped = 0;
+            for (const mana of gameState.players.p1.mana) {
+                if (!mana.tapped && tapped < card.cost) {
+                    mana.tapped = true;
+                    tapped++;
+                }
+            }
+            
+            // 召喚
+            const index = gameState.players.p1.hand.findIndex(c => c.id === card.id);
+            if (index > -1) {
+                const creature = gameState.players.p1.hand.splice(index, 1)[0];
+                creature.summoning_sick = true;
+                creature.tapped = false;
+                gameState.players.p1.battle_zone.push(creature);
+                gameState.players.p1.hand_count--;
+                gameState.log.push(`${creature.name}を召喚した`);
+                updateGameDisplay();
+            }
+        }
+        
+        // ローカルゲーム: 呪文
+        function localCastSpell(card) {
+            const availableMana = gameState.players.p1.mana.filter(m => !m.tapped);
+            if (availableMana.length < card.cost) {
+                alert('マナが足りません');
+                return;
+            }
+            
+            // マナをタップ
+            let tapped = 0;
+            for (const mana of gameState.players.p1.mana) {
+                if (!mana.tapped && tapped < card.cost) {
+                    mana.tapped = true;
+                    tapped++;
+                }
+            }
+            
+            // 呪文を唱える（簡易処理）
+            const index = gameState.players.p1.hand.findIndex(c => c.id === card.id);
+            if (index > -1) {
+                const spell = gameState.players.p1.hand.splice(index, 1)[0];
+                gameState.players.p1.graveyard.push(spell);
+                gameState.players.p1.hand_count--;
+                gameState.log.push(`${spell.name}を唱えた`);
+                updateGameDisplay();
+            }
+        }
+        
+        // ローカルゲーム: 攻撃
+        function localAttack(card) {
+            const creature = gameState.players.p1.battle_zone.find(c => c.id === card.id);
+            if (!creature) return;
+            
+            if (creature.summoning_sick) {
+                alert('召喚酔いで攻撃できません');
+                return;
+            }
+            
+            if (creature.tapped) {
+                alert('既にタップされています');
+                return;
+            }
+            
+            creature.tapped = true;
+            const breaker = creature.breaker || 1;
+            
+            for (let i = 0; i < breaker; i++) {
+                if (gameState.players.p2.shields > 0) {
+                    gameState.players.p2.shields--;
+                    
+                    if (gameState.players.p2.shield_cards.length > 0) {
+                        const shieldCard = gameState.players.p2.shield_cards.shift();
+                        gameState.players.p2.hand.push(shieldCard);
+                        gameState.players.p2.hand_count++;
+                    }
+                }
+            }
+            
+            gameState.log.push(`${creature.name}が攻撃！`);
+            
+            if (gameState.players.p2.shields === 0) {
+                gameState.winner = 'p1';
+                gameState.log.push('あなたの勝利！');
+            }
+            
+            updateGameDisplay();
         }
         
         // ボタン状態更新
