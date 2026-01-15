@@ -64,12 +64,65 @@ player_rooms = {}
 # ※ ability に文明名（"火"/"水"/"自然"/"光"/"闇"）を含めることで判定
 
 CARD_DB = [
-    # ここにカードを追加してください
-    # 
-    # 例：
-    # {"id": "example_card", "name": "サンプルカード", "cost": 3, "power": 3000, 
-    #  "civ": ["fire"], "type": "creature", "race": "ドラゴン", 
-    #  "ability": "スピードアタッカー", "breaker": 1}
+    # === 火文明テストカード ===
+    {"id": "fire_test_1", "name": "火テスト1", "cost": 2, "power": 2000, "civ": ["fire"], "type": "creature", "race": "ドラゴン", "ability": "通常クリーチャー", "breaker": 1},
+    {"id": "fire_test_2", "name": "火テスト2", "cost": 3, "power": 3000, "civ": ["fire"], "type": "creature", "race": "アーマロイド", "ability": "スピードアタッカー", "breaker": 1},
+    {"id": "fire_test_3", "name": "火テスト3", "cost": 4, "power": 4000, "civ": ["fire"], "type": "creature", "race": "ドラゴン", "ability": "W・ブレイカー", "breaker": 2},
+    {"id": "fire_test_4", "name": "火テスト4", "cost": 6, "power": 6000, "civ": ["fire"], "type": "creature", "race": "ドラゴン", "ability": "T・ブレイカー", "breaker": 3},
+    {"id": "fire_test_5", "name": "火テスト5", "cost": 3, "civ": ["fire"], "type": "spell", "ability": "S・トリガー クリーチャーを1体破壊する", "shield_trigger": True},
+    {"id": "fire_test_6", "name": "火テスト6", "cost": 5, "power": 5000, "civ": ["fire"], "type": "creature", "race": "ドラゴン", "ability": "このクリーチャーがバトルゾーンに出た時、カードを2枚引く", "breaker": 1},
+    {"id": "fire_test_7", "name": "火テスト7", "cost": 4, "civ": ["fire"], "type": "spell", "ability": "クリーチャーを2体破壊する"},
+    {"id": "fire_test_8", "name": "火テスト8", "cost": 3, "power": 3000, "civ": ["fire"], "type": "creature", "race": "アーマロイド", "ability": "スピードアタッカー W・ブレイカー", "breaker": 2},
+    {"id": "fire_test_9", "name": "火テスト9", "cost": 4, "power": 4000, "civ": ["fire"], "type": "creature", "race": "ドラゴン", "ability": "ブロッカー", "breaker": 1},
+    {"id": "fire_test_10", "name": "火テスト10", "cost": 2, "civ": ["fire"], "type": "spell", "ability": "山札の上から2枚をマナゾーンに置く"},
+    
+    # === 水文明テストカード ===
+    {"id": "water_test_1", "name": "水テスト1", "cost": 2, "power": 1000, "civ": ["water"], "type": "creature", "race": "サイバーロード", "ability": "通常クリーチャー", "breaker": 1},
+    {"id": "water_test_2", "name": "水テスト2", "cost": 3, "power": 2000, "civ": ["water"], "type": "creature", "race": "サイバーロード", "ability": "ブロッカー", "breaker": 1},
+    {"id": "water_test_3", "name": "水テスト3", "cost": 4, "power": 3000, "civ": ["water"], "type": "creature", "race": "リキッド・ピープル", "ability": "W・ブレイカー", "breaker": 2},
+    {"id": "water_test_4", "name": "水テスト4", "cost": 3, "civ": ["water"], "type": "spell", "ability": "カードを3枚引く"},
+    {"id": "water_test_5", "name": "水テスト5", "cost": 2, "civ": ["water"], "type": "spell", "ability": "S・トリガー カードを2枚引く", "shield_trigger": True},
+    {"id": "water_test_6", "name": "水テスト6", "cost": 5, "power": 4000, "civ": ["water"], "type": "creature", "race": "サイバーロード", "ability": "このクリーチャーがバトルゾーンに出た時、カードを2枚引く", "breaker": 1},
+    {"id": "water_test_7", "name": "水テスト7", "cost": 6, "power": 5000, "civ": ["water"], "type": "creature", "race": "リキッド・ピープル", "ability": "T・ブレイカー", "breaker": 3},
+    {"id": "water_test_8", "name": "水テスト8", "cost": 4, "power": 3000, "civ": ["water"], "type": "creature", "race": "サイバーロード", "ability": "スピードアタッカー ブロッカー", "breaker": 1},
+    {"id": "water_test_9", "name": "水テスト9", "cost": 3, "civ": ["water"], "type": "spell", "ability": "クリーチャーを1体タップする"},
+    {"id": "water_test_10", "name": "水テスト10", "cost": 5, "civ": ["water"], "type": "spell", "ability": "S・トリガー カードを3枚引く", "shield_trigger": True},
+    
+    # === 自然文明テストカード ===
+    {"id": "nature_test_1", "name": "自然テスト1", "cost": 2, "power": 3000, "civ": ["nature"], "type": "creature", "race": "ビーストフォーク", "ability": "通常クリーチャー", "breaker": 1},
+    {"id": "nature_test_2", "name": "自然テスト2", "cost": 3, "civ": ["nature"], "type": "spell", "ability": "山札の上から3枚をマナゾーンに置く"},
+    {"id": "nature_test_3", "name": "自然テスト3", "cost": 4, "power": 5000, "civ": ["nature"], "type": "creature", "race": "ビーストフォーク", "ability": "W・ブレイカー", "breaker": 2},
+    {"id": "nature_test_4", "name": "自然テスト4", "cost": 5, "power": 6000, "civ": ["nature"], "type": "creature", "race": "ジャイアント", "ability": "通常クリーチャー", "breaker": 1},
+    {"id": "nature_test_5", "name": "自然テスト5", "cost": 2, "civ": ["nature"], "type": "spell", "ability": "S・トリガー 山札の上から2枚をマナゾーンに置く", "shield_trigger": True},
+    {"id": "nature_test_6", "name": "自然テスト6", "cost": 6, "power": 7000, "civ": ["nature"], "type": "creature", "race": "ジャイアント", "ability": "T・ブレイカー", "breaker": 3},
+    {"id": "nature_test_7", "name": "自然テスト7", "cost": 4, "power": 4000, "civ": ["nature"], "type": "creature", "race": "ビーストフォーク", "ability": "このクリーチャーがバトルゾーンに出た時、山札の上から2枚をマナゾーンに置く", "breaker": 1},
+    {"id": "nature_test_8", "name": "自然テスト8", "cost": 5, "power": 5000, "civ": ["nature"], "type": "creature", "race": "ジャイアント", "ability": "ブロッカー", "breaker": 1},
+    {"id": "nature_test_9", "name": "自然テスト9", "cost": 7, "power": 8000, "civ": ["nature"], "type": "creature", "race": "ジャイアント", "ability": "W・ブレイカー", "breaker": 2},
+    {"id": "nature_test_10", "name": "自然テスト10", "cost": 3, "power": 4000, "civ": ["nature"], "type": "creature", "race": "ビーストフォーク", "ability": "スピードアタッカー", "breaker": 1},
+    
+    # === 光文明テストカード ===
+    {"id": "light_test_1", "name": "光テスト1", "cost": 2, "power": 2000, "civ": ["light"], "type": "creature", "race": "イニシエート", "ability": "通常クリーチャー", "breaker": 1},
+    {"id": "light_test_2", "name": "光テスト2", "cost": 3, "power": 2000, "civ": ["light"], "type": "creature", "race": "ベリー・レン", "ability": "ブロッカー", "breaker": 1},
+    {"id": "light_test_3", "name": "光テスト3", "cost": 4, "power": 3000, "civ": ["light"], "type": "creature", "race": "イニシエート", "ability": "W・ブレイカー", "breaker": 2},
+    {"id": "light_test_4", "name": "光テスト4", "cost": 3, "civ": ["light"], "type": "spell", "ability": "クリーチャーを2体タップする"},
+    {"id": "light_test_5", "name": "光テスト5", "cost": 2, "civ": ["light"], "type": "spell", "ability": "S・トリガー クリーチャーを1体タップする", "shield_trigger": True},
+    {"id": "light_test_6", "name": "光テスト6", "cost": 5, "power": 4000, "civ": ["light"], "type": "creature", "race": "ベリー・レン", "ability": "ブロッカー W・ブレイカー", "breaker": 2},
+    {"id": "light_test_7", "name": "光テスト7", "cost": 6, "power": 5000, "civ": ["light"], "type": "creature", "race": "イニシエート", "ability": "T・ブレイカー", "breaker": 3},
+    {"id": "light_test_8", "name": "光テスト8", "cost": 4, "power": 3000, "civ": ["light"], "type": "creature", "race": "イニシエート", "ability": "このクリーチャーがバトルゾーンに出た時、カードを2枚引く", "breaker": 1},
+    {"id": "light_test_9", "name": "光テスト9", "cost": 5, "civ": ["light"], "type": "spell", "ability": "クリーチャーを1体破壊する"},
+    {"id": "light_test_10", "name": "光テスト10", "cost": 4, "power": 3000, "civ": ["light"], "type": "creature", "race": "ベリー・レン", "ability": "ブロッカー スピードアタッカー", "breaker": 1},
+    
+    # === 闇文明テストカード ===
+    {"id": "darkness_test_1", "name": "闇テスト1", "cost": 2, "power": 2000, "civ": ["darkness"], "type": "creature", "race": "ゴースト", "ability": "通常クリーチャー", "breaker": 1},
+    {"id": "darkness_test_2", "name": "闇テスト2", "cost": 3, "civ": ["darkness"], "type": "spell", "ability": "クリーチャーを1体破壊する"},
+    {"id": "darkness_test_3", "name": "闇テスト3", "cost": 4, "power": 4000, "civ": ["darkness"], "type": "creature", "race": "デーモン・コマンド", "ability": "W・ブレイカー", "breaker": 2},
+    {"id": "darkness_test_4", "name": "闇テスト4", "cost": 2, "civ": ["darkness"], "type": "spell", "ability": "S・トリガー クリーチャーを1体破壊する", "shield_trigger": True},
+    {"id": "darkness_test_5", "name": "闇テスト5", "cost": 5, "power": 5000, "civ": ["darkness"], "type": "creature", "race": "デーモン・コマンド", "ability": "このクリーチャーがバトルゾーンに出た時、相手の手札を見て1枚選び、捨てさせる", "breaker": 1},
+    {"id": "darkness_test_6", "name": "闇テスト6", "cost": 6, "power": 6000, "civ": ["darkness"], "type": "creature", "race": "デーモン・コマンド", "ability": "T・ブレイカー", "breaker": 3},
+    {"id": "darkness_test_7", "name": "闇テスト7", "cost": 4, "civ": ["darkness"], "type": "spell", "ability": "クリーチャーを2体破壊する"},
+    {"id": "darkness_test_8", "name": "闇テスト8", "cost": 3, "power": 3000, "civ": ["darkness"], "type": "creature", "race": "ゴースト", "ability": "スピードアタッカー", "breaker": 1},
+    {"id": "darkness_test_9", "name": "闇テスト9", "cost": 4, "civ": ["darkness"], "type": "spell", "ability": "墓地からクリーチャーを1体選び、手札に戻す"},
+    {"id": "darkness_test_10", "name": "闇テスト10", "cost": 5, "power": 4000, "civ": ["darkness"], "type": "creature", "race": "デーモン・コマンド", "ability": "ブロッカー", "breaker": 1},
 ]
 
 class DuelMastersGame:
@@ -486,6 +539,11 @@ class DuelMastersGame:
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/api/cards')
+def get_cards():
+    """カードデータベースを取得"""
+    return {'cards': CARD_DB}
 
 @socketio.on('create_room')
 def handle_create_room(data):

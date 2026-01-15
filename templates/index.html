@@ -505,6 +505,99 @@
             color: #ffcc00;
             font-weight: bold;
         }
+        
+        /* カード詳細表示 */
+        .card-detail-panel {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            width: 300px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 3px solid #ffcc00;
+            border-radius: 15px;
+            padding: 20px;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.8);
+        }
+        
+        .card-detail-panel.show {
+            display: block;
+        }
+        
+        .card-detail-name {
+            font-size: 22px;
+            font-weight: bold;
+            color: #ffcc00;
+            margin-bottom: 10px;
+        }
+        
+        .card-detail-info {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        /* モーダル */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-overlay.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: rgba(20, 20, 40, 0.98);
+            border: 3px solid #ffcc00;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 30px;
+            color: #ffcc00;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+        
+        .modal-title {
+            font-size: 24px;
+            color: #ffcc00;
+            margin-bottom: 20px;
+        }
+        
+        .card-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+        }
+        
+        /* クリック可能エリア */
+        .clickable {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .clickable:hover {
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body>
@@ -550,8 +643,45 @@
         <!-- デッキ編成画面 -->
         <div class="room-setup" id="deckBuilderScreen" style="display: none;">
             <h2>📋 デッキ編成</h2>
-            <p style="margin: 20px 0;">デッキ編成機能は準備中です...</p>
-            <button onclick="backToMenu()" style="width: 100%;">メニューに戻る</button>
+            
+            <!-- デッキスロット選択 -->
+            <div style="margin: 20px 0;">
+                <button onclick="selectDeckSlot(1)" class="deck-slot-btn">スロット1</button>
+                <button onclick="selectDeckSlot(2)" class="deck-slot-btn">スロット2</button>
+                <button onclick="selectDeckSlot(3)" class="deck-slot-btn">スロット3</button>
+                <button onclick="selectDeckSlot(4)" class="deck-slot-btn">スロット4</button>
+                <button onclick="selectDeckSlot(5)" class="deck-slot-btn">スロット5</button>
+            </div>
+            
+            <div id="deckEditorArea" style="display: none;">
+                <h3>スロット<span id="currentSlot">1</span> を編集中</h3>
+                <p>デッキ枚数: <span id="deckCardCount">0</span> / 40</p>
+                
+                <!-- 現在のデッキ -->
+                <div style="margin: 20px 0; max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px;">
+                    <h4 style="color: #ffcc00;">現在のデッキ</h4>
+                    <div id="currentDeckList" style="font-size: 14px;"></div>
+                </div>
+                
+                <!-- カードリスト -->
+                <div style="margin: 20px 0;">
+                    <h4 style="color: #ffcc00;">カードを追加</h4>
+                    <select id="civilizationFilter" onchange="filterCards()" style="padding: 8px; margin-bottom: 10px; width: 100%;">
+                        <option value="all">全ての文明</option>
+                        <option value="fire">火</option>
+                        <option value="water">水</option>
+                        <option value="nature">自然</option>
+                        <option value="light">光</option>
+                        <option value="darkness">闇</option>
+                    </select>
+                    <div id="availableCardsList" style="max-height: 300px; overflow-y: auto; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 10px;"></div>
+                </div>
+                
+                <button onclick="saveDeck()" style="width: 48%; margin: 5px 1%; background: #4CAF50;">保存</button>
+                <button onclick="clearDeck()" style="width: 48%; margin: 5px 1%; background: #f44336;">デッキをクリア</button>
+            </div>
+            
+            <button onclick="backToMenu()" style="width: 100%; margin-top: 20px;">メニューに戻る</button>
         </div>
         
         <!-- CPU対戦画面 -->
@@ -604,15 +734,19 @@
                             <span class="stat-label">手札:</span>
                             <span id="opponentHandCount">0</span>
                         </div>
-                        <div class="stat-item">
+                        <div class="stat-item clickable" onclick="viewMana(myPlayer === 'p1' ? 'p2' : 'p1')" title="クリックでマナを確認">
                             <span class="stat-label">マナ:</span>
                             <span id="opponentManaCount">0</span>
+                        </div>
+                        <div class="stat-item clickable" onclick="viewGraveyard(myPlayer === 'p1' ? 'p2' : 'p1')" title="クリックで墓地を確認">
+                            <span class="stat-label">墓地:</span>
+                            <span id="opponentGraveyardCount">0</span>
                         </div>
                     </div>
                 </div>
                 
-                <div class="mana-zone" id="opponentMana">
-                    <small style="width: 100%; color: #ffcc00;">マナゾーン</small>
+                <div class="mana-zone clickable" id="opponentMana" onclick="viewMana(myPlayer === 'p1' ? 'p2' : 'p1')" title="クリックでマナを確認">
+                    <small style="width: 100%; color: #ffcc00;">マナゾーン (クリックで確認)</small>
                 </div>
                 
                 <div class="battle-zone" id="opponentBattleZone">
@@ -635,8 +769,8 @@
                     <h3>バトルゾーン</h3>
                 </div>
                 
-                <div class="mana-zone" id="playerMana">
-                    <small style="width: 100%; color: #ffcc00;">マナゾーン</small>
+                <div class="mana-zone clickable" id="playerMana" onclick="viewMana(myPlayer)" title="クリックでマナを確認">
+                    <small style="width: 100%; color: #ffcc00;">マナゾーン (クリックで確認)</small>
                 </div>
                 
                 <div class="player-info">
@@ -651,9 +785,13 @@
                             <span class="stat-label">手札:</span>
                             <span id="playerHandCount">0</span>
                         </div>
-                        <div class="stat-item">
+                        <div class="stat-item clickable" onclick="viewMana(myPlayer)" title="クリックでマナを確認">
                             <span class="stat-label">マナ:</span>
                             <span id="playerManaCount">0</span>
+                        </div>
+                        <div class="stat-item clickable" onclick="viewGraveyard(myPlayer)" title="クリックで墓地を確認">
+                            <span class="stat-label">墓地:</span>
+                            <span id="playerGraveyardCount">0</span>
                         </div>
                     </div>
                 </div>
@@ -677,6 +815,25 @@
             <h2>🏆 勝利！ 🏆</h2>
             <p style="font-size: 24px; color: white;">おめでとうございます！</p>
             <button onclick="location.reload()" style="margin-top: 20px; padding: 15px 30px; font-size: 18px;">もう一度プレイ</button>
+        </div>
+        
+        <!-- カード詳細パネル -->
+        <div class="card-detail-panel" id="cardDetailPanel">
+            <div class="card-detail-name" id="detailName"></div>
+            <div class="card-detail-info" id="detailCost"></div>
+            <div class="card-detail-info" id="detailCiv"></div>
+            <div class="card-detail-info" id="detailRace"></div>
+            <div class="card-detail-info" id="detailPower"></div>
+            <div class="card-detail-info" id="detailAbility" style="margin-top: 15px; line-height: 1.6;"></div>
+        </div>
+        
+        <!-- モーダル（マナ・墓地表示用） -->
+        <div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <button class="modal-close" onclick="closeModal()">×</button>
+                <h3 class="modal-title" id="modalTitle"></h3>
+                <div class="card-list" id="modalCardList"></div>
+            </div>
         </div>
     </div>
     
@@ -756,6 +913,145 @@
         function showDeckBuilder() {
             hideAllScreens();
             document.getElementById('deckBuilderScreen').style.display = 'block';
+            loadCardDatabase();
+        }
+        
+        let allCards = [];
+        let currentDeckSlot = null;
+        let currentDeck = [];
+        
+        // カードデータベースを読み込み
+        async function loadCardDatabase() {
+            try {
+                const response = await fetch('/api/cards');
+                const data = await response.json();
+                allCards = data.cards;
+            } catch (e) {
+                console.error('カードデータの読み込みに失敗:', e);
+            }
+        }
+        
+        // デッキスロットを選択
+        function selectDeckSlot(slotNumber) {
+            currentDeckSlot = slotNumber;
+            document.getElementById('currentSlot').textContent = slotNumber;
+            document.getElementById('deckEditorArea').style.display = 'block';
+            
+            // 保存されたデッキを読み込み
+            const savedDeck = localStorage.getItem(`deck_slot_${slotNumber}`);
+            if (savedDeck) {
+                currentDeck = JSON.parse(savedDeck);
+            } else {
+                currentDeck = [];
+            }
+            
+            updateDeckDisplay();
+            filterCards();
+        }
+        
+        // デッキ表示を更新
+        function updateDeckDisplay() {
+            document.getElementById('deckCardCount').textContent = currentDeck.length;
+            
+            const deckList = document.getElementById('currentDeckList');
+            deckList.innerHTML = '';
+            
+            // カードIDごとの枚数をカウント
+            const cardCounts = {};
+            currentDeck.forEach(cardId => {
+                cardCounts[cardId] = (cardCounts[cardId] || 0) + 1;
+            });
+            
+            // 表示
+            Object.entries(cardCounts).forEach(([cardId, count]) => {
+                const card = allCards.find(c => c.id === cardId);
+                if (card) {
+                    const div = document.createElement('div');
+                    div.style.cssText = 'padding: 5px; margin: 2px 0; background: rgba(255,255,255,0.1); border-radius: 5px; display: flex; justify-content: space-between; align-items: center;';
+                    div.innerHTML = `
+                        <span>${card.name} (コスト: ${card.cost})</span>
+                        <span>
+                            <button onclick="removeCardFromDeck('${cardId}')" style="padding: 2px 8px; margin: 0 2px;">-</button>
+                            <span style="margin: 0 5px;">${count}枚</span>
+                        </span>
+                    `;
+                    deckList.appendChild(div);
+                }
+            });
+        }
+        
+        // カードをフィルタリング
+        function filterCards() {
+            const filter = document.getElementById('civilizationFilter').value;
+            const cardList = document.getElementById('availableCardsList');
+            cardList.innerHTML = '';
+            
+            const filteredCards = allCards.filter(card => {
+                if (filter === 'all') return true;
+                return card.civ.includes(filter);
+            });
+            
+            filteredCards.forEach(card => {
+                const countInDeck = currentDeck.filter(id => id === card.id).length;
+                const canAdd = currentDeck.length < 40 && countInDeck < 4;
+                
+                const civNames = {'fire': '火', 'water': '水', 'nature': '自然', 'light': '光', 'darkness': '闇'};
+                const civText = card.civ.map(c => civNames[c] || c).join('/');
+                
+                const div = document.createElement('div');
+                div.style.cssText = 'padding: 8px; margin: 5px 0; background: rgba(255,255,255,0.1); border-radius: 5px; display: flex; justify-content: space-between; align-items: center;';
+                div.innerHTML = `
+                    <div>
+                        <div style="font-weight: bold;">${card.name}</div>
+                        <div style="font-size: 12px;">コスト: ${card.cost} | 文明: ${civText}</div>
+                        <div style="font-size: 11px; color: #ccc;">デッキ内: ${countInDeck}/4枚</div>
+                    </div>
+                    <button onclick="addCardToDeck('${card.id}')" ${!canAdd ? 'disabled' : ''} style="padding: 5px 15px;">
+                        追加
+                    </button>
+                `;
+                cardList.appendChild(div);
+            });
+        }
+        
+        // カードをデッキに追加
+        function addCardToDeck(cardId) {
+            const countInDeck = currentDeck.filter(id => id === cardId).length;
+            if (currentDeck.length < 40 && countInDeck < 4) {
+                currentDeck.push(cardId);
+                updateDeckDisplay();
+                filterCards();
+            }
+        }
+        
+        // カードをデッキから削除
+        function removeCardFromDeck(cardId) {
+            const index = currentDeck.indexOf(cardId);
+            if (index > -1) {
+                currentDeck.splice(index, 1);
+                updateDeckDisplay();
+                filterCards();
+            }
+        }
+        
+        // デッキを保存
+        function saveDeck() {
+            if (currentDeck.length !== 40) {
+                alert(`デッキは40枚である必要があります。現在: ${currentDeck.length}枚`);
+                return;
+            }
+            
+            localStorage.setItem(`deck_slot_${currentDeckSlot}`, JSON.stringify(currentDeck));
+            alert(`スロット${currentDeckSlot}にデッキを保存しました！`);
+        }
+        
+        // デッキをクリア
+        function clearDeck() {
+            if (confirm('デッキをクリアしてもよろしいですか？')) {
+                currentDeck = [];
+                updateDeckDisplay();
+                filterCards();
+            }
         }
 
         // CPU対戦画面
@@ -820,6 +1116,80 @@
                 display.textContent = `保存済み: ${name}`;
             }
         }
+        
+        // カード詳細を表示
+        function showCardDetail(card) {
+            document.getElementById('detailName').textContent = card.name;
+            document.getElementById('detailCost').textContent = `コスト: ${card.cost}`;
+            
+            const civNames = {'fire': '火', 'water': '水', 'nature': '自然', 'light': '光', 'darkness': '闇'};
+            const civText = card.civ.map(c => civNames[c] || c).join('/');
+            document.getElementById('detailCiv').textContent = `文明: ${civText}`;
+            
+            if (card.type === 'creature') {
+                document.getElementById('detailRace').textContent = `種族: ${card.race}`;
+                document.getElementById('detailPower').textContent = `パワー: ${card.power}`;
+            } else {
+                document.getElementById('detailRace').textContent = '種族: -';
+                document.getElementById('detailPower').textContent = 'パワー: -';
+            }
+            
+            document.getElementById('detailAbility').textContent = card.ability || '効果なし';
+            document.getElementById('cardDetailPanel').classList.add('show');
+        }
+        
+        // カード詳細を非表示
+        function hideCardDetail() {
+            document.getElementById('cardDetailPanel').classList.remove('show');
+        }
+        
+        // モーダルを開く
+        function openModal(title, cards) {
+            document.getElementById('modalTitle').textContent = title;
+            const cardList = document.getElementById('modalCardList');
+            cardList.innerHTML = '';
+            
+            cards.forEach(card => {
+                const cardElement = createCardElement(card, 'modal');
+                cardList.appendChild(cardElement);
+            });
+            
+            document.getElementById('modalOverlay').classList.add('show');
+        }
+        
+        // モーダルを閉じる
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.remove('show');
+        }
+        
+        // マナゾーンを表示
+        function viewMana(player) {
+            const manaCards = gameState.players[player].mana;
+            openModal(`${player === myPlayer ? '自分の' : '相手の'}マナゾーン (${manaCards.length}枚)`, manaCards);
+        }
+        
+        // 墓地を表示
+        function viewGraveyard(player) {
+            const graveyardCards = gameState.players[player].graveyard;
+            openModal(`${player === myPlayer ? '自分の' : '相手の'}墓地 (${graveyardCards.length}枚)`, graveyardCards);
+        }
+        
+        // 画面クリックで詳細パネルを閉じる
+        document.addEventListener('click', function(e) {
+            const panel = document.getElementById('cardDetailPanel');
+            const cards = document.querySelectorAll('.card');
+            let clickedCard = false;
+            
+            cards.forEach(card => {
+                if (card.contains(e.target)) {
+                    clickedCard = true;
+                }
+            });
+            
+            if (!clickedCard && !panel.contains(e.target)) {
+                hideCardDetail();
+            }
+        });
         
         // ルーム作成
         function createRoom() {
@@ -935,9 +1305,11 @@
             document.getElementById('playerDeckCount').innerText = myData.deck_count;
             document.getElementById('playerHandCount').innerText = myData.hand_count;
             document.getElementById('playerManaCount').innerText = myData.mana.length;
+            document.getElementById('playerGraveyardCount').innerText = myData.graveyard.length;
             document.getElementById('opponentDeckCount').innerText = opData.deck_count;
             document.getElementById('opponentHandCount').innerText = opData.hand_count;
             document.getElementById('opponentManaCount').innerText = opData.mana.length;
+            document.getElementById('opponentGraveyardCount').innerText = opData.graveyard.length;
             
             // 手札
             updateHand(myData.hand);
@@ -1040,7 +1412,12 @@
             if (card.tapped) cardDiv.classList.add('tapped');
             if (card.summoning_sick) cardDiv.classList.add('summoning-sick');
             
-            cardDiv.onclick = () => onCardClick(card, location);
+            // カードクリック時に詳細表示とゲームアクションの両方を処理
+            cardDiv.onclick = (e) => {
+                e.stopPropagation();
+                showCardDetail(card);
+                onCardClick(card, location);
+            };
             
             // S・トリガーマーク
             const triggerMark = card.shield_trigger ? '<span style="color: #ffcc00; font-weight: bold;">⚡S・トリガー</span><br>' : '';
