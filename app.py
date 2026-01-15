@@ -15,22 +15,61 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 rooms = {}
 player_rooms = {}
 
+# ===== 属性（文明）システム =====
+# 5つの属性（文明）：
+# - fire (火): 攻撃的、除去、速攻
+# - water (水): ドロー、バウンス、コントロール
+# - nature (自然): マナ加速、大型クリーチャー
+# - light (光): 除去、タップ、ブロッカー
+# - darkness (闇): 破壊、ハンデス、墓地利用
+#
+# 多色カード：複数の属性を持つ（例: ["fire", "darkness"]）
+# 文明を対象とした効果：特定の属性のカードに影響を与える効果
+
 # カードデータベース（システム対応済み・カードは空）
 # 実装可能なシステム：
-# - 単色・多色カード対応 (civ: ["fire"] or ["fire", "darkness"])
-# - S・トリガー (shield_trigger: True)
-# - W・ブレイカー、T・ブレイカー (breaker: 2 or 3)
-# - スピードアタッカー (ability に "スピードアタッカー" を含める)
-# - ブロッカー (ability に "ブロッカー" を含める)
-# - 召喚時効果 (ability に "バトルゾーンに出た時" を含める)
-# - マナブースト (ability に "山札の上から○枚をマナゾーンに置く" を含める)
-# - ドロー効果 (ability に "カードを○枚引く" を含める)
-# - 除去効果 (ability に "クリーチャーを○体破壊する" を含める)
-# - タップ効果 (ability に "クリーチャーを○体タップする" を含める)
-# - 墓地回収 (ability に "墓地から" を含める)
-# - ハンデス (ability に "手札を見て" を含める)
+# 
+# 【基本情報】
+# - id: カードの一意なID（文字列）
+# - name: カード名（文字列）
+# - cost: コスト（数値）
+# - civ: 属性（配列） 例: ["fire"] または ["fire", "darkness"]
+#   * 単色: ["fire"], ["water"], ["nature"], ["light"], ["darkness"]
+#   * 多色: ["fire", "darkness"], ["light", "water"] など
+#   * 多色カードは含まれる全ての属性を持つ
+# - type: "creature" または "spell"
+# - race: 種族（文字列、クリーチャーのみ）
+# - power: パワー（数値、クリーチャーのみ）
+# - ability: 効果テキスト（文字列）
+#
+# 【特殊能力】
+# - shield_trigger: True （S・トリガー）
+# - breaker: 2 or 3 （W・ブレイカー、T・ブレイカー、デフォルトは1）
+#
+# 【ability に含めるキーワードによる自動処理】
+# - "スピードアタッカー" → 召喚酔いなし
+# - "ブロッカー" → 攻撃をブロック可能
+# - "このクリーチャーがバトルゾーンに出た時" → 召喚時効果
+# - "カードを○枚引く" → ドロー効果
+# - "山札の上から○枚をマナゾーンに置く" → マナブースト
+# - "クリーチャーを○体破壊する" → 除去効果
+# - "クリーチャーを○体タップする" → タップ効果
+# - "墓地から" → 墓地利用効果
+# - "手札を見て" → ハンデス効果
+#
+# 【文明を対象とした効果の実装例】
+# - "火のクリーチャーのパワー+1000" → 火属性を持つクリーチャー強化
+# - "水の呪文のコスト-1" → 水属性を持つ呪文のコスト軽減
+# - "自然のクリーチャーを破壊できない" → 自然属性への耐性
+# ※ ability に文明名（"火"/"水"/"自然"/"光"/"闇"）を含めることで判定
+
 CARD_DB = [
     # ここにカードを追加してください
+    # 
+    # 例：
+    # {"id": "example_card", "name": "サンプルカード", "cost": 3, "power": 3000, 
+    #  "civ": ["fire"], "type": "creature", "race": "ドラゴン", 
+    #  "ability": "スピードアタッカー", "breaker": 1}
 ]
 
 class DuelMastersGame:
@@ -66,15 +105,38 @@ class DuelMastersGame:
         self.winner = None
         self.log = ["デュエルマスターズ開始！"]
         self.attacking_creature = None
-        self.attack_target = None
+        self.attac属性（文明）情報を保持
+                # 多色カードは複数の属性を持つが、表示用に最初の属性を使用
+                if isinstance(mana_card.get("civ"), list):
+                    mana_card["civ_display"] = mana_card["civ"][0]
+                    mana_card["civilizations"] = mana_card["civ"]  # 全属性を保持
+                else:
+                    mana_card["civ_display"] = mana_card.get("civ", ["fire"])[0]
+                    mana_card["civilizations"] = mana_card.get("civ", ["fire"])
+                self.players[player]["mana"].append(mana_card)
+                self.log.append(f"{player}が{mana_card['name']}をマナゾーンに置いた")
+                return True
+        return False
     
-    def build_deck(self, player):
-        """デッキを構築（各カード1-2枚で40枚デッキ）"""
-        deck = []
-        # 主要カードは2枚、サポートカードは1枚
-        for card in CARD_DB:
-            deck.append(dict(card))
-            if card["cost"] <= 4:  # コスト4以下は2枚
+    def has_civilization(self, card, civ_name):
+        """カードが特定の属性（文明）を持つかチェック"""
+        card_civs = card.get("civ", [])
+        if isinstance(card_civs, list):
+            return civ_name in card_civs
+        return card_civs == civ_name
+    
+    def count_civilizations(self, player, civ_name):
+        """特定の属性（文明）を持つカードの数をカウント"""
+        count = 0
+        # バトルゾーン
+        for card in self.players[player]["battle_zone"]:
+            if self.has_civilization(card, civ_name):
+                count += 1
+        # マナゾーン
+        for card in self.players[player]["mana"]:
+            if self.has_civilization(card, civ_name):
+                count += 1
+        return count"cost"] <= 4:  # コスト4以下は2枚
                 deck.append(dict(card))
         random.shuffle(deck)
         self.players[player]["deck"] = deck[:40]  # 40枚に調整
@@ -102,14 +164,24 @@ class DuelMastersGame:
         """手札からマナゾーンにカードをチャージ"""
         hand = self.players[player]["hand"]
         for i, card in enumerate(hand):
-            if card["id"] == card_id:
-                mana_card = hand.pop(i)
-                mana_card["tapped"] = False
-                # 文明情報を保持（配列の場合は最初の文明を使用）
-                if isinstance(mana_card.get("civ"), list):
-                    mana_card["civ_display"] = mana_card["civ"][0]
-                else:
-                    mana_card["civ_display"] = mana_card.get("civ", "fire")
+            if car文明を対象としたコスト軽減効果のチェック（将来の拡張用）
+                actual_cost = card["cost"]
+                # 例: "水の呪文のコスト-1" のような効果があればここで処理
+                
+                if len(available_mana) < actual_cost:
+                    return False, "マナが足りません"
+                
+                # マナをタップ
+                for j in range(actual_cost):
+                    available_mana[j]["tapped"] = True
+                
+                # 召喚
+                creature = hand.pop(i)
+                creature["summoning_sick"] = True
+                creature["tapped"] = False
+                # 属性情報を保持
+                if "civ" in creature and isinstance(creature["civ"], list):
+                    creature["civilizations"] = creature["civ"]"] = mana_card.get("civ", "fire")
                 self.players[player]["mana"].append(mana_card)
                 self.log.append(f"{player}が{mana_card['name']}をマナゾーンに置いた")
                 return True
