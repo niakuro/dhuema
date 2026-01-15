@@ -517,6 +517,12 @@
         <!-- ルーム設定画面 -->
         <div class="room-setup" id="roomSetup">
             <h2>ルーム設定</h2>
+            
+            <!-- プレイヤー名設定 -->
+            <input type="text" id="playerNameInput" placeholder="プレイヤー名を入力">
+            <button onclick="savePlayerName()" style="width: 100%; margin-bottom: 20px;">名前を保存</button>
+            <div id="savedNameDisplay" style="margin-bottom: 20px; color: #4CAF50;"></div>
+            
             <input type="text" id="roomIdInput" placeholder="ルームID（空欄で自動生成）">
             <div>
                 <button onclick="createRoom()">ルーム作成</button>
@@ -630,6 +636,38 @@
         let gameState = null;
         let currentMode = null;
         let selectedCard = null;
+        
+        // ページ読み込み時に保存された名前を表示
+        window.onload = function() {
+            loadPlayerName();
+        };
+
+        // プレイヤー名を保存
+        function savePlayerName() {
+            const nameInput = document.getElementById('playerNameInput');
+            const name = nameInput.value.trim();
+            if (name) {
+                localStorage.setItem('duel_masters_player_name', name);
+                displaySavedName(name);
+                alert('プレイヤー名を保存しました！');
+            } else {
+                alert('名前を入力してください');
+            }
+        }
+
+        // 保存された名前を読み込み
+        function loadPlayerName() {
+            const savedName = localStorage.getItem('duel_masters_player_name');
+            if (savedName) {
+                document.getElementById('playerNameInput').value = savedName;
+                displaySavedName(savedName);
+            }
+        }
+
+        // 保存された名前を表示
+        function displaySavedName(name) {
+            document.getElementById('savedNameDisplay').textContent = `保存済み: ${name}`;
+        }
         
         // ルーム作成
         function createRoom() {
