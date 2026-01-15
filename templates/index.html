@@ -514,22 +514,73 @@
             <p>カードゲームの世界へようこそ！</p>
         </div>
         
-        <!-- ルーム設定画面 -->
-        <div class="room-setup" id="roomSetup">
-            <h2>ルーム設定</h2>
+        <!-- タイトル画面 -->
+        <div class="room-setup" id="titleScreen">
+            <h1 style="font-size: 48px; color: #ffcc00; margin-bottom: 30px;">デュエルマスターズ</h1>
+            <button id="startGameBtn" onclick="startNewGame()" style="width: 100%; display: none;">ゲームを始める</button>
+            <button id="continueGameBtn" onclick="continueGame()" style="width: 100%; display: none;">ゲームを続ける</button>
+        </div>
+        
+        <!-- プレイヤー名設定画面 -->
+        <div class="room-setup" id="nameSetupScreen" style="display: none;">
+            <h2>プレイヤー名を設定</h2>
+            <input type="text" id="newPlayerNameInput" placeholder="プレイヤー名を入力" style="margin: 20px 0;">
+            <button onclick="confirmPlayerName()" style="width: 100%;">決定</button>
+        </div>
+        
+        <!-- メニュー画面 -->
+        <div class="room-setup" id="menuScreen" style="display: none;">
+            <h2>メニュー</h2>
+            <div id="menuPlayerName" style="margin-bottom: 20px; font-size: 20px; color: #4CAF50;"></div>
             
-            <!-- プレイヤー名設定 -->
-            <input type="text" id="playerNameInput" placeholder="プレイヤー名を入力">
-            <button onclick="savePlayerName()" style="width: 100%; margin-bottom: 20px;">名前を保存</button>
-            <div id="savedNameDisplay" style="margin-bottom: 20px; color: #4CAF50;"></div>
-            
-            <input type="text" id="roomIdInput" placeholder="ルームID（空欄で自動生成）">
+            <button onclick="showDeckBuilder()" style="width: 100%; margin: 10px 0; padding: 20px; font-size: 18px;">
+                📋 デッキ編成
+            </button>
+            <button onclick="showCPUBattle()" style="width: 100%; margin: 10px 0; padding: 20px; font-size: 18px;">
+                🤖 CPU対戦
+            </button>
+            <button onclick="showOnlineBattle()" style="width: 100%; margin: 10px 0; padding: 20px; font-size: 18px;">
+                🌐 オンライン対戦
+            </button>
+            <button onclick="showSettings()" style="width: 100%; margin: 10px 0; padding: 20px; font-size: 18px;">
+                ⚙️ 設定
+            </button>
+        </div>
+        
+        <!-- デッキ編成画面 -->
+        <div class="room-setup" id="deckBuilderScreen" style="display: none;">
+            <h2>📋 デッキ編成</h2>
+            <p style="margin: 20px 0;">デッキ編成機能は準備中です...</p>
+            <button onclick="backToMenu()" style="width: 100%;">メニューに戻る</button>
+        </div>
+        
+        <!-- CPU対戦画面 -->
+        <div class="room-setup" id="cpuBattleScreen" style="display: none;">
+            <h2>🤖 CPU対戦</h2>
+            <p style="margin: 20px 0;">CPU対戦機能は準備中です...</p>
+            <button onclick="backToMenu()" style="width: 100%;">メニューに戻る</button>
+        </div>
+        
+        <!-- オンライン対戦画面 -->
+        <div class="room-setup" id="onlineBattleScreen" style="display: none;">
+            <h2>🌐 オンライン対戦</h2>
+            <input type="text" id="roomIdInput" placeholder="ルームID（空欄で自動生成）" style="margin: 20px 0;">
             <div>
-                <button onclick="createRoom()">ルーム作成</button>
-                <button onclick="joinRoom()">ルーム参加</button>
+                <button onclick="createRoom()" style="width: 48%; margin: 5px 1%;">ルーム作成</button>
+                <button onclick="joinRoom()" style="width: 48%; margin: 5px 1%;">ルーム参加</button>
             </div>
             <div id="roomInfo" style="margin-top: 20px; color: #ffcc00;"></div>
             <button id="readyBtn" onclick="ready()" style="width: 100%; margin-top: 20px; display: none;">準備完了</button>
+            <button onclick="backToMenu()" style="width: 100%; margin-top: 10px;">メニューに戻る</button>
+        </div>
+        
+        <!-- 設定画面 -->
+        <div class="room-setup" id="settingsScreen" style="display: none;">
+            <h2>⚙️ 設定</h2>
+            <h3 style="margin-top: 20px; color: #ffcc00;">プレイヤー名</h3>
+            <input type="text" id="settingsPlayerNameInput" placeholder="新しいプレイヤー名" style="margin: 10px 0;">
+            <button onclick="changePlayerName()" style="width: 100%; margin-bottom: 20px;">変更</button>
+            <button onclick="backToMenu()" style="width: 100%;">メニューに戻る</button>
         </div>
         
         <!-- ゲーム画面 -->
@@ -639,10 +690,108 @@
         
         // ページ読み込み時に保存された名前を表示
         window.onload = function() {
-            loadPlayerName();
+            checkPlayerName();
         };
 
-        // プレイヤー名を保存
+        // プレイヤー名の確認とタイトル画面の表示
+        function checkPlayerName() {
+            const savedName = localStorage.getItem('duel_masters_player_name');
+            if (savedName) {
+                document.getElementById('continueGameBtn').style.display = 'block';
+            } else {
+                document.getElementById('startGameBtn').style.display = 'block';
+            }
+        }
+
+        // 新しくゲームを始める
+        function startNewGame() {
+            hideAllScreens();
+            document.getElementById('nameSetupScreen').style.display = 'block';
+        }
+
+        // ゲームを続ける
+        function continueGame() {
+            hideAllScreens();
+            showMenu();
+        }
+
+        // プレイヤー名を決定
+        function confirmPlayerName() {
+            const nameInput = document.getElementById('newPlayerNameInput');
+            const name = nameInput.value.trim();
+            if (name) {
+                localStorage.setItem('duel_masters_player_name', name);
+                hideAllScreens();
+                showMenu();
+            } else {
+                alert('プレイヤー名を入力してください');
+            }
+        }
+
+        // メニュー画面を表示
+        function showMenu() {
+            const savedName = localStorage.getItem('duel_masters_player_name');
+            document.getElementById('menuPlayerName').textContent = `プレイヤー: ${savedName}`;
+            document.getElementById('menuScreen').style.display = 'block';
+        }
+
+        // 全画面を非表示
+        function hideAllScreens() {
+            document.getElementById('titleScreen').style.display = 'none';
+            document.getElementById('nameSetupScreen').style.display = 'none';
+            document.getElementById('menuScreen').style.display = 'none';
+            document.getElementById('deckBuilderScreen').style.display = 'none';
+            document.getElementById('cpuBattleScreen').style.display = 'none';
+            document.getElementById('onlineBattleScreen').style.display = 'none';
+            document.getElementById('settingsScreen').style.display = 'none';
+        }
+
+        // メニューに戻る
+        function backToMenu() {
+            hideAllScreens();
+            showMenu();
+        }
+
+        // デッキ編成画面
+        function showDeckBuilder() {
+            hideAllScreens();
+            document.getElementById('deckBuilderScreen').style.display = 'block';
+        }
+
+        // CPU対戦画面
+        function showCPUBattle() {
+            hideAllScreens();
+            document.getElementById('cpuBattleScreen').style.display = 'block';
+        }
+
+        // オンライン対戦画面
+        function showOnlineBattle() {
+            hideAllScreens();
+            document.getElementById('onlineBattleScreen').style.display = 'block';
+        }
+
+        // 設定画面
+        function showSettings() {
+            hideAllScreens();
+            const savedName = localStorage.getItem('duel_masters_player_name');
+            document.getElementById('settingsPlayerNameInput').value = savedName;
+            document.getElementById('settingsScreen').style.display = 'block';
+        }
+
+        // プレイヤー名を変更
+        function changePlayerName() {
+            const nameInput = document.getElementById('settingsPlayerNameInput');
+            const name = nameInput.value.trim();
+            if (name) {
+                localStorage.setItem('duel_masters_player_name', name);
+                alert('プレイヤー名を変更しました！');
+                backToMenu();
+            } else {
+                alert('プレイヤー名を入力してください');
+            }
+        }
+
+        // プレイヤー名を保存（旧機能 - 互換性のため残す）
         function savePlayerName() {
             const nameInput = document.getElementById('playerNameInput');
             const name = nameInput.value.trim();
@@ -655,7 +804,7 @@
             }
         }
 
-        // 保存された名前を読み込み
+        // 保存された名前を読み込み（旧機能 - 互換性のため残す）
         function loadPlayerName() {
             const savedName = localStorage.getItem('duel_masters_player_name');
             if (savedName) {
@@ -664,9 +813,12 @@
             }
         }
 
-        // 保存された名前を表示
+        // 保存された名前を表示（旧機能 - 互換性のため残す）
         function displaySavedName(name) {
-            document.getElementById('savedNameDisplay').textContent = `保存済み: ${name}`;
+            const display = document.getElementById('savedNameDisplay');
+            if (display) {
+                display.textContent = `保存済み: ${name}`;
+            }
         }
         
         // ルーム作成
@@ -941,7 +1093,7 @@
         
         socket.on('game_start', (data) => {
             gameState = data;
-            document.getElementById('roomSetup').style.display = 'none';
+            hideAllScreens();
             document.getElementById('gameField').classList.add('active');
             updateGameDisplay();
         });
