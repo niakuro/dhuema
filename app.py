@@ -15,49 +15,55 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 rooms = {}
 player_rooms = {}
 
-# カードデータベース（5文明：火、水、自然、光、闇）
+# カードデータベース（環境デッキベース）
 CARD_DB = [
-    # 火文明（攻撃的なクリーチャー）
-    {"id": "fire_soldier", "name": "ファイアソルジャー", "cost": 2, "power": 2000, "civ": "fire", "type": "creature", "race": "ヒューマノイド", "ability": ""},
-    {"id": "fire_bird", "name": "フレイムバード", "cost": 3, "power": 3000, "civ": "fire", "type": "creature", "race": "フェニックス", "ability": "スピードアタッカー"},
-    {"id": "volcano_dragon", "name": "ボルケーノドラゴン", "cost": 5, "power": 6000, "civ": "fire", "type": "creature", "race": "ドラゴン", "ability": "パワーアタッカー+2000"},
-    {"id": "inferno_gate", "name": "インフェルノゲート", "cost": 6, "power": 7000, "civ": "fire", "type": "creature", "race": "ドラゴン", "ability": "このクリーチャーがバトルゾーンに出た時、相手のパワー3000以下のクリーチャーを1体破壊する"},
-    {"id": "fire_blast", "name": "ファイアブラスト", "cost": 3, "power": 0, "civ": "fire", "type": "spell", "ability": "相手のパワー3000以下のクリーチャーを1体破壊する"},
+    # ===== 赤黒レッドゾーン（速攻ビート）=====
+    {"id": "redzone_roar", "name": "轟く侵略レッドゾーン", "cost": 4, "power": 6000, "civ": ["fire", "darkness"], "type": "creature", "race": "ヒューマノイド", "ability": "スピードアタッカー。W・ブレイカー", "breaker": 2},
+    {"id": "invade_red", "name": "侵略者レッド", "cost": 3, "power": 3000, "civ": ["fire"], "type": "creature", "race": "ヒューマノイド", "ability": "スピードアタッカー"},
+    {"id": "ballom_quake", "name": "轟く覚醒バロム・クエイク", "cost": 6, "power": 11000, "civ": ["fire", "darkness"], "type": "creature", "race": "デーモン・コマンド", "ability": "W・ブレイカー。このクリーチャーがバトルゾーンに出た時、相手のクリーチャーを2体まで破壊する", "breaker": 2},
+    {"id": "aggression", "name": "侵略の魂", "cost": 2, "power": 0, "civ": ["fire"], "type": "spell", "ability": "自分のクリーチャーを1体選ぶ。このターン、そのクリーチャーは+3000され、スピードアタッカーを得る"},
+    {"id": "darkness_hand", "name": "デーモン・ハンド", "cost": 2, "power": 0, "civ": ["darkness"], "type": "spell", "ability": "S・トリガー。相手の手札を見て1枚選び、捨てさせる", "shield_trigger": true},
+    {"id": "demon_slash", "name": "デモニック・スラッシュ", "cost": 3, "power": 0, "civ": ["fire"], "type": "spell", "ability": "相手のパワー4000以下のクリーチャーを1体破壊する"},
     
-    # 水文明（ドロー・バウンス）
-    {"id": "aqua_knight", "name": "アクアナイト", "cost": 2, "power": 1000, "civ": "water", "type": "creature", "race": "リキッド・ピープル", "ability": "ブロッカー"},
-    {"id": "crystal_lancer", "name": "クリスタルランサー", "cost": 3, "power": 2000, "civ": "water", "type": "creature", "race": "リキッド・ピープル", "ability": "このクリーチャーがバトルゾーンに出た時、カードを1枚引く"},
-    {"id": "storm_crawler", "name": "ストームクローラー", "cost": 4, "power": 3000, "civ": "water", "type": "creature", "race": "サイバーロード", "ability": "このクリーチャーがバトルゾーンに出た時、カードを2枚引く"},
-    {"id": "aqua_surfer", "name": "アクアサーファー", "cost": 5, "power": 3000, "civ": "water", "type": "creature", "race": "リキッド・ピープル", "ability": "ブロッカー。このクリーチャーがバトルゾーンに出た時、カードを2枚引く"},
-    {"id": "aqua_bounce", "name": "アクアバウンス", "cost": 2, "power": 0, "civ": "water", "type": "spell", "ability": "クリーチャーを1体、持ち主の手札に戻す"},
+    # ===== 青魔導具ブランド（ドロー・踏み倒し）=====
+    {"id": "magitool_brand", "name": "ブランド", "cost": 4, "power": 3000, "civ": ["water"], "type": "creature", "race": "マジック・コマンド", "ability": "このクリーチャーがバトルゾーンに出た時、カードを3枚引く"},
+    {"id": "aqua_vehicle", "name": "アクアン・ヴィークル", "cost": 3, "power": 2000, "civ": ["water"], "type": "creature", "race": "サイバーロード", "ability": "このクリーチャーがバトルゾーンに出た時、カードを2枚引く"},
+    {"id": "super_spark", "name": "超次元ガロウズ・ホール", "cost": 8, "power": 0, "civ": ["water"], "type": "spell", "ability": "S・トリガー。カードを2枚引く。その後、自分の手札を2枚捨てる", "shield_trigger": true},
+    {"id": "draw_selector", "name": "ドロー・セレクター", "cost": 2, "power": 0, "civ": ["water"], "type": "spell", "ability": "カードを2枚引く"},
+    {"id": "aqua_hulcus", "name": "アクア・ハルカス", "cost": 1, "power": 1000, "civ": ["water"], "type": "creature", "race": "リキッド・ピープル", "ability": ""},
+    {"id": "cyber_brain", "name": "サイバー・ブレイン", "cost": 3, "power": 0, "civ": ["water"], "type": "spell", "ability": "カードを3枚引く"},
     
-    # 自然文明（マナブースト・大型）
-    {"id": "bronze_arm", "name": "ブロンズアーム", "cost": 2, "power": 2000, "civ": "nature", "type": "creature", "race": "ツリーフォーク", "ability": "このクリーチャーがバトルゾーンに出た時、自分のマナゾーンからカードを1枚、手札に戻してもよい"},
-    {"id": "emerald_grass", "name": "エメラルドグラス", "cost": 3, "power": 2000, "civ": "nature", "type": "creature", "race": "ツリーフォーク", "ability": ""},
-    {"id": "gigant_mantis", "name": "ギガントマンティス", "cost": 5, "power": 5000, "civ": "nature", "type": "creature", "race": "ジャイアント・インセクト", "ability": ""},
-    {"id": "storm_horn", "name": "ストームホーン", "cost": 7, "power": 9000, "civ": "nature", "type": "creature", "race": "ホーンドビースト", "ability": "このクリーチャーは、相手プレイヤーを攻撃できない"},
-    {"id": "natural_snare", "name": "ナチュラルスネア", "cost": 2, "power": 0, "civ": "nature", "type": "spell", "ability": "自分の山札の上から1枚目をマナゾーンに置く"},
+    # ===== 緑単轟轟轟ブランド（マナ加速・大型）=====
+    {"id": "gogobrando", "name": "轟轟轟ブランド", "cost": 6, "power": 9500, "civ": ["nature"], "type": "creature", "race": "ジャイアント", "ability": "このクリーチャーがバトルゾーンに出た時、自分の山札の上から5枚をマナゾーンに置く。W・ブレイカー", "breaker": 2},
+    {"id": "bronze_arm_tribe", "name": "ブロンズ・アーム族", "cost": 2, "power": 2000, "civ": ["nature"], "type": "creature", "race": "ツリーフォーク", "ability": "このクリーチャーがバトルゾーンに出た時、自分の山札の上から1枚をマナゾーンに置く"},
+    {"id": "mana_nexus", "name": "マナ・ネクサス", "cost": 3, "power": 0, "civ": ["nature"], "type": "spell", "ability": "自分の山札の上から2枚をマナゾーンに置く"},
+    {"id": "faerie_life", "name": "フェアリー・ライフ", "cost": 2, "power": 0, "civ": ["nature"], "type": "spell", "ability": "自分の山札の上から1枚をマナゾーンに置く"},
+    {"id": "spiral_gate", "name": "スパイラル・ゲート", "cost": 1, "power": 1000, "civ": ["nature"], "type": "creature", "race": "ツリーフォーク", "ability": ""},
+    {"id": "gigantic_beetle", "name": "剛撃虫ワーム・ホール", "cost": 5, "power": 8000, "civ": ["nature"], "type": "creature", "race": "ジャイアント・インセクト", "ability": "T・ブレイカー", "breaker": 3},
     
-    # 光文明（タップ・小型効率）
-    {"id": "la_byle", "name": "ラビール", "cost": 2, "power": 2000, "civ": "light", "type": "creature", "race": "イニシエート", "ability": "ブロッカー"},
-    {"id": "holy_spark", "name": "ホーリースパーク", "cost": 3, "power": 2000, "civ": "light", "type": "creature", "race": "スターライト・ツリー", "ability": "このクリーチャーがバトルゾーンに出た時、相手のクリーチャーを1体タップする"},
-    {"id": "gran_gure", "name": "グラングレ", "cost": 4, "power": 3000, "civ": "light", "type": "creature", "race": "ガーディアン", "ability": "ブロッカー"},
-    {"id": "diamond_sword", "name": "ダイヤモンドソード", "cost": 6, "power": 6000, "civ": "light", "type": "creature", "race": "ガーディアン", "ability": "ブロッカー。このクリーチャーがバトルゾーンに出た時、相手のクリーチャーを全てタップする"},
-    {"id": "holy_awe", "name": "ホーリーオー", "cost": 3, "power": 0, "civ": "light", "type": "spell", "ability": "相手のクリーチャーを1体タップする"},
+    # ===== 白青ミラクル（除去・ロック）=====
+    {"id": "miracle_miradante", "name": "終末の時計ザ・クロック", "cost": 7, "power": 6000, "civ": ["light", "water"], "type": "creature", "race": "エンジェル・コマンド", "ability": "ブロッカー。このクリーチャーがバトルゾーンに出た時、相手のクリーチャーを全てタップする"},
+    {"id": "la_byle_seeker", "name": "ラ・ビュール", "cost": 2, "power": 2000, "civ": ["light"], "type": "creature", "race": "イニシエート", "ability": "ブロッカー"},
+    {"id": "holy_awe", "name": "ホーリー・スパーク", "cost": 4, "power": 0, "civ": ["light"], "type": "spell", "ability": "S・トリガー。相手のクリーチャーを1体タップする", "shield_trigger": true},
+    {"id": "miracle_shine", "name": "奇跡の精霊ミラクル・スター", "cost": 5, "power": 5500, "civ": ["light"], "type": "creature", "race": "エンジェル・コマンド", "ability": "ブロッカー。W・ブレイカー", "breaker": 2},
+    {"id": "shining_ball", "name": "シャイニング・ホール", "cost": 1, "power": 1000, "civ": ["light"], "type": "creature", "race": "イニシエート", "ability": ""},
+    {"id": "heaven_shield", "name": "ヘブンズ・ゲート", "cost": 5, "power": 0, "civ": ["light"], "type": "spell", "ability": "S・トリガー。自分のシールドを1枚、手札に加える", "shield_trigger": true},
     
-    # 闇文明（破壊・ハンデス）
-    {"id": "death_smoke", "name": "デススモーク", "cost": 2, "power": 1000, "civ": "darkness", "type": "creature", "race": "ブレインジャッカー", "ability": "このクリーチャーがバトルゾーンに出た時、相手の手札を見て、その中から1枚選び、捨てさせる"},
-    {"id": "skeleton_vice", "name": "スケルトンバイス", "cost": 3, "power": 2000, "civ": "darkness", "type": "creature", "race": "スケルトン", "ability": "スレイヤー（このクリーチャーをブロックしたクリーチャーを破壊する）"},
-    {"id": "ballom_master", "name": "バロムマスター", "cost": 5, "power": 5000, "civ": "darkness", "type": "creature", "race": "デーモン・コマンド", "ability": "このクリーチャーがバトルゾーンに出た時、相手のクリーチャーを1体破壊する"},
-    {"id": "dark_emperor", "name": "ダークエンペラー", "cost": 7, "power": 9000, "civ": "darkness", "type": "creature", "race": "デーモン・コマンド", "ability": "このクリーチャーがバトルゾーンに出た時、相手のクリーチャーを全て破壊する"},
-    {"id": "death_blast", "name": "デスブラスト", "cost": 4, "power": 0, "civ": "darkness", "type": "spell", "ability": "相手のクリーチャーを1体破壊する"},
+    # ===== 5色コントロール（除去・墓地利用）=====
+    {"id": "five_star_king", "name": "極限龍神オーガ", "cost": 10, "power": 15000, "civ": ["fire", "water", "nature", "light", "darkness"], "type": "creature", "race": "ドラゴン", "ability": "T・ブレイカー。このクリーチャーはバトルゾーンに出たターンも攻撃できる", "breaker": 3},
+    {"id": "death_smoke", "name": "デス・スモーク", "cost": 2, "power": 1000, "civ": ["darkness"], "type": "creature", "race": "ブレインジャッカー", "ability": "このクリーチャーがバトルゾーンに出た時、相手の手札を見て1枚選び、捨てさせる"},
+    {"id": "terror_pit", "name": "テラー・ピット", "cost": 5, "power": 0, "civ": ["darkness"], "type": "spell", "ability": "S・トリガー。相手のクリーチャーを1体破壊する", "shield_trigger": true},
+    {"id": "ballom_kaiser", "name": "暗黒皇バロム・カイザー", "cost": 7, "power": 11000, "civ": ["darkness"], "type": "creature", "race": "デーモン・コマンド", "ability": "W・ブレイカー。このクリーチャーがバトルゾーンに出た時、相手のクリーチャーを全て破壊する", "breaker": 2},
+    {"id": "poison_worm", "name": "ポイズン・ワーム", "cost": 1, "power": 1000, "civ": ["darkness"], "type": "creature", "race": "ワーム", "ability": ""},
+    {"id": "dimension_gate", "name": "次元の霊峰", "cost": 6, "power": 0, "civ": ["light", "nature"], "type": "spell", "ability": "S・トリガー。自分の墓地からクリーチャーを1体、バトルゾーンに出す", "shield_trigger": true},
     
-    # 多色・汎用カード
-    {"id": "bronze_charger", "name": "ブロンズチャージャー", "cost": 1, "power": 1000, "civ": "fire", "type": "creature", "race": "ヒューマノイド", "ability": ""},
-    {"id": "aqua_hulcus", "name": "アクアハルカス", "cost": 1, "power": 1000, "civ": "water", "type": "creature", "race": "リキッド・ピープル", "ability": ""},
-    {"id": "spiral_gate", "name": "スパイラルゲート", "cost": 1, "power": 1000, "civ": "nature", "type": "creature", "race": "ツリーフォーク", "ability": ""},
-    {"id": "shining_ball", "name": "シャイニングボール", "cost": 1, "power": 1000, "civ": "light", "type": "creature", "race": "イニシエート", "ability": ""},
-    {"id": "poison_worm", "name": "ポイズンワーム", "cost": 1, "power": 1000, "civ": "darkness", "type": "creature", "race": "ワーム", "ability": ""},
+    # ===== 汎用・優秀カード =====
+    {"id": "bronze_charger", "name": "ソウル・アドバンテージ", "cost": 1, "power": 1000, "civ": ["fire"], "type": "creature", "race": "ヒューマノイド", "ability": ""},
+    {"id": "aqua_sniper", "name": "アクア・スナイパー", "cost": 4, "power": 3000, "civ": ["water"], "type": "creature", "race": "リキッド・ピープル", "ability": "ブロッカー。このクリーチャーがバトルゾーンに出た時、カードを1枚引く"},
+    {"id": "natural_trap", "name": "ナチュラル・トラップ", "cost": 3, "power": 0, "civ": ["nature"], "type": "spell", "ability": "S・トリガー。自分の山札の上から2枚をマナゾーンに置く", "shield_trigger": true},
+    {"id": "volcano_gazer", "name": "ボルカニック・アロー", "cost": 4, "power": 0, "civ": ["fire"], "type": "spell", "ability": "S・トリガー。相手のパワー5000以下のクリーチャーを1体破壊する", "shield_trigger": true},
+    {"id": "holy_barrier", "name": "ホーリー・バリア", "cost": 2, "power": 0, "civ": ["light"], "type": "spell", "ability": "S・トリガー。次の相手のターンの間、相手のクリーチャーは攻撃できない", "shield_trigger": true},
+    {"id": "darkness_probe", "name": "ダーク・リターン", "cost": 4, "power": 0, "civ": ["darkness"], "type": "spell", "ability": "自分の墓地からクリーチャーを1体、手札に戻す"},
 ]
 
 class DuelMastersGame:
@@ -72,6 +78,7 @@ class DuelMastersGame:
                 "mana": [],
                 "battle_zone": [],
                 "shields": 5,
+                "shield_cards": [],
                 "graveyard": [],
                 "ready": False
             },
@@ -81,6 +88,7 @@ class DuelMastersGame:
                 "mana": [],
                 "battle_zone": [],
                 "shields": 5,
+                "shield_cards": [],
                 "graveyard": [],
                 "ready": False
             }
@@ -94,13 +102,15 @@ class DuelMastersGame:
         self.attack_target = None
     
     def build_deck(self, player):
-        """デッキを構築（各カード2枚ずつで40枚デッキ）"""
+        """デッキを構築（各カード1-2枚で40枚デッキ）"""
         deck = []
-        for card in CARD_DB[:20]:  # 最初の20種類を使用
+        # 主要カードは2枚、サポートカードは1枚
+        for card in CARD_DB:
             deck.append(dict(card))
-            deck.append(dict(card))
+            if card["cost"] <= 4:  # コスト4以下は2枚
+                deck.append(dict(card))
         random.shuffle(deck)
-        self.players[player]["deck"] = deck
+        self.players[player]["deck"] = deck[:40]  # 40枚に調整
     
     def draw_card(self, player, count=1):
         """カードを引く"""
@@ -115,9 +125,11 @@ class DuelMastersGame:
     
     def setup_shields(self, player):
         """シールドを5枚セット"""
+        self.players[player]["shield_cards"] = []
         for _ in range(5):
             if len(self.players[player]["deck"]) > 0:
-                self.players[player]["deck"].pop(0)
+                shield_card = self.players[player]["deck"].pop(0)
+                self.players[player]["shield_cards"].append(shield_card)
     
     def charge_mana(self, player, card_id):
         """手札からマナゾーンにカードをチャージ"""
@@ -126,6 +138,11 @@ class DuelMastersGame:
             if card["id"] == card_id:
                 mana_card = hand.pop(i)
                 mana_card["tapped"] = False
+                # 文明情報を保持（配列の場合は最初の文明を使用）
+                if isinstance(mana_card.get("civ"), list):
+                    mana_card["civ_display"] = mana_card["civ"][0]
+                else:
+                    mana_card["civ_display"] = mana_card.get("civ", "fire")
                 self.players[player]["mana"].append(mana_card)
                 self.log.append(f"{player}が{mana_card['name']}をマナゾーンに置いた")
                 return True
@@ -184,24 +201,152 @@ class DuelMastersGame:
     def trigger_ability(self, player, creature):
         """能力発動処理"""
         ability = creature.get("ability", "")
-        if "カードを1枚引く" in ability:
-            self.draw_card(player, 1)
+        opponent = "p2" if player == "p1" else "p1"
+        
+        # ドロー効果
+        if "カードを3枚引く" in ability:
+            self.draw_card(player, 3)
         elif "カードを2枚引く" in ability:
             self.draw_card(player, 2)
+        elif "カードを1枚引く" in ability:
+            self.draw_card(player, 1)
+        
+        # マナブースト
+        if "自分の山札の上から5枚をマナゾーンに置く" in ability:
+            for _ in range(5):
+                if len(self.players[player]["deck"]) > 0:
+                    mana_card = self.players[player]["deck"].pop(0)
+                    mana_card["tapped"] = False
+                    self.players[player]["mana"].append(mana_card)
+            self.log.append("マナブースト！5枚マナに置いた")
+        elif "自分の山札の上から1枚をマナゾーンに置く" in ability:
+            if len(self.players[player]["deck"]) > 0:
+                mana_card = self.players[player]["deck"].pop(0)
+                mana_card["tapped"] = False
+                self.players[player]["mana"].append(mana_card)
+        
+        # 除去効果
+        if "相手のクリーチャーを2体まで破壊する" in ability:
+            destroyed_count = 0
+            for _ in range(2):
+                if len(self.players[opponent]["battle_zone"]) > 0:
+                    destroyed = self.players[opponent]["battle_zone"].pop(0)
+                    self.players[opponent]["graveyard"].append(destroyed)
+                    destroyed_count += 1
+            if destroyed_count > 0:
+                self.log.append(f"召喚時能力で{destroyed_count}体破壊した")
+        elif "相手のクリーチャーを全て破壊する" in ability:
+            destroyed_count = len(self.players[opponent]["battle_zone"])
+            self.players[opponent]["graveyard"].extend(self.players[opponent]["battle_zone"])
+            self.players[opponent]["battle_zone"] = []
+            self.log.append(f"全体破壊！{destroyed_count}体破壊した")
+        elif "相手のクリーチャーを1体破壊する" in ability:
+            if len(self.players[opponent]["battle_zone"]) > 0:
+                destroyed = self.players[opponent]["battle_zone"].pop(0)
+                self.players[opponent]["graveyard"].append(destroyed)
+                self.log.append(f"{destroyed['name']}を破壊した")
+        
+        # タップ効果
+        if "相手のクリーチャーを全てタップする" in ability:
+            for c in self.players[opponent]["battle_zone"]:
+                c["tapped"] = True
+            self.log.append("相手のクリーチャーを全てタップした")
+        elif "相手のクリーチャーを1体タップする" in ability:
+            if len(self.players[opponent]["battle_zone"]) > 0:
+                self.players[opponent]["battle_zone"][0]["tapped"] = True
+        
+        # ハンデス
+        if "相手の手札を見て1枚選び、捨てさせる" in ability:
+            if len(self.players[opponent]["hand"]) > 0:
+                discarded = self.players[opponent]["hand"].pop(0)
+                self.players[opponent]["graveyard"].append(discarded)
+                self.log.append(f"相手の手札から1枚捨てさせた")
     
     def process_spell_effect(self, player, spell):
-        """呪文効果処理（簡易版）"""
+        """呪文効果処理"""
         ability = spell.get("ability", "")
         opponent = "p2" if player == "p1" else "p1"
         
-        if "パワー3000以下のクリーチャーを1体破壊" in ability:
-            # 実際はプレイヤーが選択するが、ここでは自動
+        # ドロー効果
+        if "カードを3枚引く" in ability:
+            self.draw_card(player, 3)
+        elif "カードを2枚引く" in ability:
+            self.draw_card(player, 2)
+        elif "カードを1枚引く" in ability:
+            self.draw_card(player, 1)
+        
+        # マナブースト
+        if "自分の山札の上から5枚をマナゾーンに置く" in ability:
+            for _ in range(5):
+                if len(self.players[player]["deck"]) > 0:
+                    mana_card = self.players[player]["deck"].pop(0)
+                    mana_card["tapped"] = False
+                    self.players[player]["mana"].append(mana_card)
+        elif "自分の山札の上から2枚をマナゾーンに置く" in ability:
+            for _ in range(2):
+                if len(self.players[player]["deck"]) > 0:
+                    mana_card = self.players[player]["deck"].pop(0)
+                    mana_card["tapped"] = False
+                    self.players[player]["mana"].append(mana_card)
+        elif "自分の山札の上から1枚をマナゾーンに置く" in ability or "自分の山札の上から1枚目をマナゾーンに置く" in ability:
+            if len(self.players[player]["deck"]) > 0:
+                mana_card = self.players[player]["deck"].pop(0)
+                mana_card["tapped"] = False
+                self.players[player]["mana"].append(mana_card)
+        
+        # 除去効果
+        if "相手のパワー5000以下のクリーチャーを1体破壊する" in ability:
             for creature in self.players[opponent]["battle_zone"]:
-                if creature["power"] <= 3000:
+                if creature["power"] <= 5000:
                     self.players[opponent]["battle_zone"].remove(creature)
                     self.players[opponent]["graveyard"].append(creature)
                     self.log.append(f"{creature['name']}が破壊された")
                     break
+        elif "相手のパワー4000以下のクリーチャーを1体破壊する" in ability:
+            for creature in self.players[opponent]["battle_zone"]:
+                if creature["power"] <= 4000:
+                    self.players[opponent]["battle_zone"].remove(creature)
+                    self.players[opponent]["graveyard"].append(creature)
+                    self.log.append(f"{creature['name']}が破壊された")
+                    break
+        elif "相手のクリーチャーを1体破壊する" in ability:
+            if len(self.players[opponent]["battle_zone"]) > 0:
+                destroyed = self.players[opponent]["battle_zone"].pop(0)
+                self.players[opponent]["graveyard"].append(destroyed)
+                self.log.append(f"{destroyed['name']}が破壊された")
+        
+        # タップ効果
+        if "相手のクリーチャーを1体タップする" in ability:
+            if len(self.players[opponent]["battle_zone"]) > 0:
+                self.players[opponent]["battle_zone"][0]["tapped"] = True
+                self.log.append(f"{self.players[opponent]['battle_zone'][0]['name']}がタップされた")
+        
+        # 墓地回収
+        if "自分の墓地からクリーチャーを1体、手札に戻す" in ability:
+            if len(self.players[player]["graveyard"]) > 0:
+                returned = self.players[player]["graveyard"].pop()
+                self.players[player]["hand"].append(returned)
+                self.log.append(f"{returned['name']}を墓地から手札に戻した")
+        elif "自分の墓地からクリーチャーを1体、バトルゾーンに出す" in ability:
+            if len(self.players[player]["graveyard"]) > 0:
+                summoned = self.players[player]["graveyard"].pop()
+                summoned["summoning_sick"] = False
+                summoned["tapped"] = False
+                self.players[player]["battle_zone"].append(summoned)
+                self.log.append(f"{summoned['name']}を墓地からバトルゾーンに出した")
+        
+        # ハンデス
+        if "相手の手札を見て1枚選び、捨てさせる" in ability:
+            if len(self.players[opponent]["hand"]) > 0:
+                discarded = self.players[opponent]["hand"].pop(0)
+                self.players[opponent]["graveyard"].append(discarded)
+                self.log.append(f"相手の{discarded['name']}を捨てさせた")
+        
+        # バフ効果
+        if "そのクリーチャーは+3000され" in ability:
+            if len(self.players[player]["battle_zone"]) > 0:
+                self.players[player]["battle_zone"][0]["power"] += 3000
+                self.players[player]["battle_zone"][0]["ability"] += ". スピードアタッカー"
     
     def attack(self, player, creature_id, target="player"):
         """攻撃"""
@@ -209,7 +354,7 @@ class DuelMastersGame:
         
         for creature in self.players[player]["battle_zone"]:
             if creature["id"] == creature_id:
-                if creature.get("summoning_sick", False) and "スピードアタッカー" not in creature.get("ability", ""):
+                if creature.get("summoning_sick", False) and "スピードアタッカー" not in creature.get("ability", "") and "このクリーチャーはバトルゾーンに出たターンも攻撃できる" not in creature.get("ability", ""):
                     return False, "召喚酔いで攻撃できません"
                 if creature.get("tapped", False):
                     return False, "既にタップされています"
@@ -217,13 +362,29 @@ class DuelMastersGame:
                 creature["tapped"] = True
                 
                 if target == "player":
-                    # シールドブレイク
-                    if self.players[opponent]["shields"] > 0:
-                        self.players[opponent]["shields"] -= 1
-                        self.log.append(f"{creature['name']}がシールドをブレイク！残り{self.players[opponent]['shields']}枚")
-                        if self.players[opponent]["shields"] == 0:
-                            self.winner = player
-                            self.log.append(f"{player}の勝利！")
+                    # ブレイカー数を取得
+                    breaker_count = creature.get("breaker", 1)
+                    shields_broken = 0
+                    
+                    for _ in range(breaker_count):
+                        if self.players[opponent]["shields"] > 0:
+                            self.players[opponent]["shields"] -= 1
+                            shields_broken += 1
+                            
+                            # S・トリガー処理
+                            if len(self.players[opponent].get("shield_cards", [])) > 0:
+                                shield_card = self.players[opponent]["shield_cards"].pop(0)
+                                self.players[opponent]["hand"].append(shield_card)
+                                
+                                if shield_card.get("shield_trigger", False):
+                                    self.log.append(f"S・トリガー発動！{shield_card['name']}")
+                                    self.trigger_shield_effect(opponent, shield_card)
+                    
+                    self.log.append(f"{creature['name']}が{shields_broken}枚シールドをブレイク！残り{self.players[opponent]['shields']}枚")
+                    
+                    if self.players[opponent]["shields"] == 0:
+                        self.winner = player
+                        self.log.append(f"{player}の勝利！")
                     return True, "攻撃成功"
                 else:
                     # ブロッカーとバトル
@@ -240,6 +401,30 @@ class DuelMastersGame:
                                 self.log.append(f"{creature['name']}が破壊された")
                             return True, "バトル発生"
         return False, "攻撃失敗"
+    
+    def trigger_shield_effect(self, player, card):
+        """S・トリガー効果処理（簡易版）"""
+        ability = card.get("ability", "")
+        opponent = "p2" if player == "p1" else "p1"
+        
+        if "カードを2枚引く" in ability:
+            self.draw_card(player, 2)
+        elif "カードを1枚引く" in ability:
+            self.draw_card(player, 1)
+        elif "相手のクリーチャーを1体タップする" in ability:
+            if len(self.players[opponent]["battle_zone"]) > 0:
+                self.players[opponent]["battle_zone"][0]["tapped"] = True
+        elif "相手のクリーチャーを1体破壊する" in ability:
+            if len(self.players[opponent]["battle_zone"]) > 0:
+                destroyed = self.players[opponent]["battle_zone"].pop(0)
+                self.players[opponent]["graveyard"].append(destroyed)
+                self.log.append(f"S・トリガーで{destroyed['name']}が破壊された")
+        elif "自分の山札の上から2枚をマナゾーンに置く" in ability:
+            for _ in range(2):
+                if len(self.players[player]["deck"]) > 0:
+                    mana_card = self.players[player]["deck"].pop(0)
+                    mana_card["tapped"] = False
+                    self.players[player]["mana"].append(mana_card)
     
     def untap_all(self, player):
         """全てアンタップ"""

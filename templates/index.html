@@ -228,6 +228,28 @@
             border-color: #6600ff;
         }
         
+        /* 多色カード */
+        .card.multi {
+            background: linear-gradient(135deg, #ff4444 0%, #4444ff 25%, #44ff44 50%, #ffff44 75%, #8844ff 100%);
+            border-color: #ffaa00;
+            box-shadow: 0 0 15px rgba(255, 170, 0, 0.6);
+        }
+        
+        .card.multi-fire-darkness {
+            background: linear-gradient(135deg, #ff4444 0%, #8844ff 100%);
+            border-color: #ff0088;
+        }
+        
+        .card.multi-light-water {
+            background: linear-gradient(135deg, #ffff44 0%, #4444ff 100%);
+            border-color: #88ffff;
+        }
+        
+        .card.multi-light-nature {
+            background: linear-gradient(135deg, #ffff44 0%, #44ff44 100%);
+            border-color: #ccff00;
+        }
+        
         .card-cost {
             position: absolute;
             top: -8px;
@@ -784,7 +806,14 @@
             
             mana.forEach(card => {
                 const manaCard = document.createElement('div');
-                manaCard.className = `mana-card ${card.civ} ${card.tapped ? 'tapped' : ''}`;
+                let civClass = '';
+                if (Array.isArray(card.civ)) {
+                    civClass = card.civ[0];
+                } else {
+                    civClass = card.civ || card.civ_display || 'fire';
+                }
+                manaCard.className = `mana-card ${civClass} ${card.tapped ? 'tapped' : ''}`;
+                manaCard.title = card.name;
                 container.appendChild(manaCard);
             });
         }
@@ -804,17 +833,40 @@
         // カード要素作成
         function createCardElement(card, location, owner) {
             const cardDiv = document.createElement('div');
-            cardDiv.className = `card ${card.civ}`;
+            
+            // 多色カード対応
+            let civClass = '';
+            if (Array.isArray(card.civ)) {
+                if (card.civ.length > 2) {
+                    civClass = 'multi';
+                } else {
+                    civClass = `multi-${card.civ.join('-')}`;
+                }
+            } else {
+                civClass = card.civ || card.civ_display || 'fire';
+            }
+            
+            cardDiv.className = `card ${civClass}`;
             if (card.tapped) cardDiv.classList.add('tapped');
             if (card.summoning_sick) cardDiv.classList.add('summoning-sick');
             
             cardDiv.onclick = () => onCardClick(card, location);
             
+            // S・トリガーマーク
+            const triggerMark = card.shield_trigger ? '<span style="color: #ffcc00; font-weight: bold;">⚡S・トリガー</span><br>' : '';
+            
+            // ブレイカー表示
+            let breakerText = '';
+            if (card.breaker && card.breaker > 1) {
+                breakerText = `<div style="position: absolute; top: -8px; right: -8px; background: #ff0000; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid #fff;">${'⚔️'.repeat(card.breaker)}</div>`;
+            }
+            
             cardDiv.innerHTML = `
                 <div class="card-cost">${card.cost}</div>
+                ${breakerText}
                 <div class="card-name">${card.name}</div>
                 <div class="card-race">${card.race || card.type}</div>
-                <div class="card-ability">${card.ability || '効果なし'}</div>
+                <div class="card-ability">${triggerMark}${card.ability || '効果なし'}</div>
                 ${card.type === 'creature' ? `<div class="card-power">${card.power}</div>` : ''}
             `;
             
