@@ -15,55 +15,22 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 rooms = {}
 player_rooms = {}
 
-# カードデータベース（環境デッキベース）
+# カードデータベース（システム対応済み・カードは空）
+# 実装可能なシステム：
+# - 単色・多色カード対応 (civ: ["fire"] or ["fire", "darkness"])
+# - S・トリガー (shield_trigger: True)
+# - W・ブレイカー、T・ブレイカー (breaker: 2 or 3)
+# - スピードアタッカー (ability に "スピードアタッカー" を含める)
+# - ブロッカー (ability に "ブロッカー" を含める)
+# - 召喚時効果 (ability に "バトルゾーンに出た時" を含める)
+# - マナブースト (ability に "山札の上から○枚をマナゾーンに置く" を含める)
+# - ドロー効果 (ability に "カードを○枚引く" を含める)
+# - 除去効果 (ability に "クリーチャーを○体破壊する" を含める)
+# - タップ効果 (ability に "クリーチャーを○体タップする" を含める)
+# - 墓地回収 (ability に "墓地から" を含める)
+# - ハンデス (ability に "手札を見て" を含める)
 CARD_DB = [
-    # ===== 赤黒レッドゾーン（速攻ビート）=====
-    {"id": "redzone_roar", "name": "轟く侵略レッドゾーン", "cost": 4, "power": 6000, "civ": ["fire", "darkness"], "type": "creature", "race": "ヒューマノイド", "ability": "スピードアタッカー。W・ブレイカー", "breaker": 2},
-    {"id": "invade_red", "name": "侵略者レッド", "cost": 3, "power": 3000, "civ": ["fire"], "type": "creature", "race": "ヒューマノイド", "ability": "スピードアタッカー"},
-    {"id": "ballom_quake", "name": "轟く覚醒バロム・クエイク", "cost": 6, "power": 11000, "civ": ["fire", "darkness"], "type": "creature", "race": "デーモン・コマンド", "ability": "W・ブレイカー。このクリーチャーがバトルゾーンに出た時、相手のクリーチャーを2体まで破壊する", "breaker": 2},
-    {"id": "aggression", "name": "侵略の魂", "cost": 2, "power": 0, "civ": ["fire"], "type": "spell", "ability": "自分のクリーチャーを1体選ぶ。このターン、そのクリーチャーは+3000され、スピードアタッカーを得る"},
-    {"id": "darkness_hand", "name": "デーモン・ハンド", "cost": 2, "power": 0, "civ": ["darkness"], "type": "spell", "ability": "S・トリガー。相手の手札を見て1枚選び、捨てさせる", "shield_trigger": true},
-    {"id": "demon_slash", "name": "デモニック・スラッシュ", "cost": 3, "power": 0, "civ": ["fire"], "type": "spell", "ability": "相手のパワー4000以下のクリーチャーを1体破壊する"},
-    
-    # ===== 青魔導具ブランド（ドロー・踏み倒し）=====
-    {"id": "magitool_brand", "name": "ブランド", "cost": 4, "power": 3000, "civ": ["water"], "type": "creature", "race": "マジック・コマンド", "ability": "このクリーチャーがバトルゾーンに出た時、カードを3枚引く"},
-    {"id": "aqua_vehicle", "name": "アクアン・ヴィークル", "cost": 3, "power": 2000, "civ": ["water"], "type": "creature", "race": "サイバーロード", "ability": "このクリーチャーがバトルゾーンに出た時、カードを2枚引く"},
-    {"id": "super_spark", "name": "超次元ガロウズ・ホール", "cost": 8, "power": 0, "civ": ["water"], "type": "spell", "ability": "S・トリガー。カードを2枚引く。その後、自分の手札を2枚捨てる", "shield_trigger": true},
-    {"id": "draw_selector", "name": "ドロー・セレクター", "cost": 2, "power": 0, "civ": ["water"], "type": "spell", "ability": "カードを2枚引く"},
-    {"id": "aqua_hulcus", "name": "アクア・ハルカス", "cost": 1, "power": 1000, "civ": ["water"], "type": "creature", "race": "リキッド・ピープル", "ability": ""},
-    {"id": "cyber_brain", "name": "サイバー・ブレイン", "cost": 3, "power": 0, "civ": ["water"], "type": "spell", "ability": "カードを3枚引く"},
-    
-    # ===== 緑単轟轟轟ブランド（マナ加速・大型）=====
-    {"id": "gogobrando", "name": "轟轟轟ブランド", "cost": 6, "power": 9500, "civ": ["nature"], "type": "creature", "race": "ジャイアント", "ability": "このクリーチャーがバトルゾーンに出た時、自分の山札の上から5枚をマナゾーンに置く。W・ブレイカー", "breaker": 2},
-    {"id": "bronze_arm_tribe", "name": "ブロンズ・アーム族", "cost": 2, "power": 2000, "civ": ["nature"], "type": "creature", "race": "ツリーフォーク", "ability": "このクリーチャーがバトルゾーンに出た時、自分の山札の上から1枚をマナゾーンに置く"},
-    {"id": "mana_nexus", "name": "マナ・ネクサス", "cost": 3, "power": 0, "civ": ["nature"], "type": "spell", "ability": "自分の山札の上から2枚をマナゾーンに置く"},
-    {"id": "faerie_life", "name": "フェアリー・ライフ", "cost": 2, "power": 0, "civ": ["nature"], "type": "spell", "ability": "自分の山札の上から1枚をマナゾーンに置く"},
-    {"id": "spiral_gate", "name": "スパイラル・ゲート", "cost": 1, "power": 1000, "civ": ["nature"], "type": "creature", "race": "ツリーフォーク", "ability": ""},
-    {"id": "gigantic_beetle", "name": "剛撃虫ワーム・ホール", "cost": 5, "power": 8000, "civ": ["nature"], "type": "creature", "race": "ジャイアント・インセクト", "ability": "T・ブレイカー", "breaker": 3},
-    
-    # ===== 白青ミラクル（除去・ロック）=====
-    {"id": "miracle_miradante", "name": "終末の時計ザ・クロック", "cost": 7, "power": 6000, "civ": ["light", "water"], "type": "creature", "race": "エンジェル・コマンド", "ability": "ブロッカー。このクリーチャーがバトルゾーンに出た時、相手のクリーチャーを全てタップする"},
-    {"id": "la_byle_seeker", "name": "ラ・ビュール", "cost": 2, "power": 2000, "civ": ["light"], "type": "creature", "race": "イニシエート", "ability": "ブロッカー"},
-    {"id": "holy_awe", "name": "ホーリー・スパーク", "cost": 4, "power": 0, "civ": ["light"], "type": "spell", "ability": "S・トリガー。相手のクリーチャーを1体タップする", "shield_trigger": true},
-    {"id": "miracle_shine", "name": "奇跡の精霊ミラクル・スター", "cost": 5, "power": 5500, "civ": ["light"], "type": "creature", "race": "エンジェル・コマンド", "ability": "ブロッカー。W・ブレイカー", "breaker": 2},
-    {"id": "shining_ball", "name": "シャイニング・ホール", "cost": 1, "power": 1000, "civ": ["light"], "type": "creature", "race": "イニシエート", "ability": ""},
-    {"id": "heaven_shield", "name": "ヘブンズ・ゲート", "cost": 5, "power": 0, "civ": ["light"], "type": "spell", "ability": "S・トリガー。自分のシールドを1枚、手札に加える", "shield_trigger": true},
-    
-    # ===== 5色コントロール（除去・墓地利用）=====
-    {"id": "five_star_king", "name": "極限龍神オーガ", "cost": 10, "power": 15000, "civ": ["fire", "water", "nature", "light", "darkness"], "type": "creature", "race": "ドラゴン", "ability": "T・ブレイカー。このクリーチャーはバトルゾーンに出たターンも攻撃できる", "breaker": 3},
-    {"id": "death_smoke", "name": "デス・スモーク", "cost": 2, "power": 1000, "civ": ["darkness"], "type": "creature", "race": "ブレインジャッカー", "ability": "このクリーチャーがバトルゾーンに出た時、相手の手札を見て1枚選び、捨てさせる"},
-    {"id": "terror_pit", "name": "テラー・ピット", "cost": 5, "power": 0, "civ": ["darkness"], "type": "spell", "ability": "S・トリガー。相手のクリーチャーを1体破壊する", "shield_trigger": true},
-    {"id": "ballom_kaiser", "name": "暗黒皇バロム・カイザー", "cost": 7, "power": 11000, "civ": ["darkness"], "type": "creature", "race": "デーモン・コマンド", "ability": "W・ブレイカー。このクリーチャーがバトルゾーンに出た時、相手のクリーチャーを全て破壊する", "breaker": 2},
-    {"id": "poison_worm", "name": "ポイズン・ワーム", "cost": 1, "power": 1000, "civ": ["darkness"], "type": "creature", "race": "ワーム", "ability": ""},
-    {"id": "dimension_gate", "name": "次元の霊峰", "cost": 6, "power": 0, "civ": ["light", "nature"], "type": "spell", "ability": "S・トリガー。自分の墓地からクリーチャーを1体、バトルゾーンに出す", "shield_trigger": true},
-    
-    # ===== 汎用・優秀カード =====
-    {"id": "bronze_charger", "name": "ソウル・アドバンテージ", "cost": 1, "power": 1000, "civ": ["fire"], "type": "creature", "race": "ヒューマノイド", "ability": ""},
-    {"id": "aqua_sniper", "name": "アクア・スナイパー", "cost": 4, "power": 3000, "civ": ["water"], "type": "creature", "race": "リキッド・ピープル", "ability": "ブロッカー。このクリーチャーがバトルゾーンに出た時、カードを1枚引く"},
-    {"id": "natural_trap", "name": "ナチュラル・トラップ", "cost": 3, "power": 0, "civ": ["nature"], "type": "spell", "ability": "S・トリガー。自分の山札の上から2枚をマナゾーンに置く", "shield_trigger": true},
-    {"id": "volcano_gazer", "name": "ボルカニック・アロー", "cost": 4, "power": 0, "civ": ["fire"], "type": "spell", "ability": "S・トリガー。相手のパワー5000以下のクリーチャーを1体破壊する", "shield_trigger": true},
-    {"id": "holy_barrier", "name": "ホーリー・バリア", "cost": 2, "power": 0, "civ": ["light"], "type": "spell", "ability": "S・トリガー。次の相手のターンの間、相手のクリーチャーは攻撃できない", "shield_trigger": true},
-    {"id": "darkness_probe", "name": "ダーク・リターン", "cost": 4, "power": 0, "civ": ["darkness"], "type": "spell", "ability": "自分の墓地からクリーチャーを1体、手札に戻す"},
+    # ここにカードを追加してください
 ]
 
 class DuelMastersGame:
